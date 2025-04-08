@@ -22,13 +22,11 @@ import { AuthService } from '../../auth/services/auth.service';
           <div class="card">
             <h3>Ciclos actuales</h3>
             <p>No hay ciclos activos</p>
-            <a routerLink="/cycles" class="card-link">Ver ciclos</a>
           </div>
           
           <div class="card">
             <h3>Propuestas pendientes</h3>
             <p>No hay propuestas pendientes</p>
-            <a routerLink="/pitches" class="card-link">Ver propuestas</a>
           </div>
         </div>
       </div>

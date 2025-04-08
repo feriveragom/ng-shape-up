@@ -13,7 +13,7 @@ import { UserRole } from './auth/models/user.model';
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
-  title = 'shape-up';
+  title = 'ng-shape-up';
   isAuthenticated = false;
   isAdmin = false;
 

@@ -4,8 +4,7 @@
     <nav>
       <!-- Enlaces informativos siempre visibles -->
       <ul>
-        <li><a routerLink="/about" routerLinkActive="active">Sobre Shape Up</a></li>
-        <li><a routerLink="/faq" routerLinkActive="active">Preguntas Frecuentes</a></li>
+        <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Sobre Shape Up</a></li>
         
         <!-- Enlaces condicionales según autenticación -->
         @if (!isAuthenticated) {

@@ -5,12 +5,8 @@ import { UserRole } from './auth/models/user.model';
 
 export const routes: Routes = [
   {
-    path: 'about',
+    path: '',
     loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent)
-  },
-  {
-    path: 'faq',
-    loadComponent: () => import('./pages/faq/faq.component').then(m => m.FaqComponent)
   },
   
   // Rutas protegidas
