@@ -1,0 +1,77 @@
+<div class="user-management-container">
+  <h1>Gestión de Usuarios</h1>
+  
+  <div class="alert info-alert" *ngIf="message">
+    {{ message }}
+  </div>
+  
+  <div class="alert error-alert" *ngIf="error">
+    {{ error }}
+  </div>
+  
+  <div class="loading-indicator" *ngIf="loading">
+    Cargando usuarios...
+  </div>
+  
+  <table class="users-table" *ngIf="!loading && users.length > 0">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Email</th>
+        <th>Roles</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let user of users">
+        <td>{{ user.name || 'Sin nombre' }}</td>
+        <td>{{ user.email }}</td>
+        <td>
+          <div class="role-badges">
+            <span 
+              *ngFor="let role of user.roles" 
+              class="role-badge"
+              [class.admin-role]="role === 'ADMIN'"
+              [class.user-role]="role === 'USER'"
+            >
+              {{ role }}
+            </span>
+          </div>
+        </td>
+        <td>
+          <div class="role-actions">
+            <div class="role-checkboxes">
+              <div class="checkbox-group">
+                <label>
+                  <input 
+                    type="checkbox" 
+                    [(ngModel)]="selectedRoles[user.id!][UserRole.ADMIN]"
+                    [disabled]="isFeriveragom(user)"
+                    [checked]="isFeriveragom(user) || selectedRoles[user.id!][UserRole.ADMIN]"
+                    (change)="onRoleChange(user)"
+                  />
+                  Administrador
+                </label>
+              </div>
+              <!-- El checkbox de Usuario solo se muestra si NO es feriveragom -->
+              <div class="checkbox-group" *ngIf="!isFeriveragom(user)">
+                <label>
+                  <input 
+                    type="checkbox"
+                    [(ngModel)]="selectedRoles[user.id!][UserRole.USER]"
+                    (change)="onRoleChange(user)"
+                  />
+                  Usuario
+                </label>
+              </div>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  
+  <div class="no-users-message" *ngIf="!loading && users.length === 0">
+    No hay usuarios registrados.
+  </div>
+</div> 
