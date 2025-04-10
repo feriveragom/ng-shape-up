@@ -1240,7 +1240,7 @@ firebase init hosting:github
 +  Firebase initialization complete!
 
   git add .
-  git commit -m "tu mensaje"
+  git commit -m "Despliegue automatico para firebase"
   git push origin main
 
   Después del despliegue, tu aplicación estará disponible en:
