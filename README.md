@@ -1028,319 +1028,224 @@ export class DataService {
    - Simular delays y errores
    - Verificar efectos secundarios
 
-### Integración con Firebase
 
-https://console.firebase.google.com/project/angular-firebase-hub/overview?onboardingAssistance=true
 
-Este proyecto (`angular-firebase-hub`) integra Firebase como backend para proporcionar:
-- Base de datos NoSQL (Firestore)
-- Autenticación de usuarios
-- Almacenamiento de archivos
-- Hosting con CDN global
+# Guía de Firebase para Angular
 
-#### 1. Configuración Básica
+## Ficheros relacionados con Firebase en ng-<project-name>
 
+### 1. Ficheros de Configuración Base
+- `src/environments/environment.development.ts` - Configuración Firebase desarrollo
+- `src/environments/environment.ts` - Configuración Firebase producción
+- `src/app/app.config.ts` - Providers de Firebase para Angular
+
+### 2. Ficheros de Firebase
+- `firebase.json` - Configuración principal de Firebase
+- `.firebaserc` - Configuración del proyecto Firebase
+- `firestore.rules` - Reglas de seguridad para Firestore
+- `firestore.indexes.json` - Índices de Firestore
+- `storage.rules` - Reglas de seguridad para Storage
+- `.firebase/` - Directorio con caché y logs (ignorado en git)
+
+### 3. Ficheros de GitHub Actions
+- `.github/workflows/firebase-hosting-merge.yml` - Despliegue automático en merge
+- `.github/workflows/firebase-hosting-pull-request.yml` - Preview en Pull Requests
+
+### 4. Ficheros de Angular
+- `angular.json` - Configuración de environments y build
+- `package.json` - Dependencias Firebase (@angular/fire y firebase)
+
+### 5. Ficheros Opcionales (si se usan esas características)
+- `src/app/services/auth.service.ts` - Servicio de autenticación
+- `src/app/services/firestore.service.ts` - Servicio para Firestore
+- `src/app/services/storage.service.ts` - Servicio para Storage
+
+## Configuración del proyecto en Firebase Console
+
+### URLs de Referencia
 ```bash
-# Instalar dependencias
-npm install firebase @angular/fire
+  Firebase Console: https://console.firebase.google.com
+  Proyecto ejemplo:
+    https://angular-firebase-hub.web.app
+    https://angular-firebase-hub.firebaseapp.com
 ```
 
-**environment.ts**:
+### Pasos de Configuración Firebase
+  I. Crear Proyecto en Firebase Console (una sola vez)
+    1- Ir a Firebase Console
+    2- Clic en "Añadir proyecto"
+    3- Nombre del proyecto: angular-firebase-hub
+    4- Configurar Google Analytics (opcional)
+    5- Crear proyecto
+
+  II. Registrar Aplicación Web
+    1- En la consola del proyecto, clic en icono web </>
+    2- Nombre de la app: ng-shape-up
+    3- Registrar app
+    4- Guardar configuración mostrada.
+```bash  
+      const firebaseConfig = {
+        apiKey: "xxx",
+        authDomain: "proyecto.firebaseapp.com",
+        projectId: "proyecto",
+        storageBucket: "proyecto.appspot.com",
+        messagingSenderId: "xxx",
+        appId: "xxx"
+      };
+```
+
+## Pasos de Configuración Local- Configurar Hosting
+    1- Instalar Firebase CLI (si no está instalado):
+```bash 
+      # Instalar Firebase CLI globalmente una sola vez
+      npm install -g firebase-tools
+```
+    2- Iniciar sesión:
+```bash
+      # Iniciar sesión en Firebase (cuenta Google) una sola vez
+      firebase login
+```
+    3- Inicializar proyecto: 
+```bash
+      # Configura Firebase para cada proyecto nuevo.
+      firebase init
+      # Seleccionar opciones:
+      # ✓ Firestore: Configure security rules and indexes files for Firestore
+      # ✓ Hosting: Configure files for Firebase Hosting
+      # ✓ Storage: Configure a security rules file for Cloud Storage
+      # ✓ Use an existing project
+      # ✓ Select: tu-proyecto
+      # ✓ What do you want to use as your public directory? dist/nombre-proyecto/browser
+      # ✓ Configure as a single-page app? Yes
+```
+
+## Activación y Configuración de Servicios Firebase
+
+### 1. Activar Authentication
+1. En Firebase Console -> Authentication -> Get Started
+2. Habilitar métodos de autenticación:
+   - Email/Password -> Enable
+   - Google (opcional) -> Enable
+   - Otros providers según necesidad
+
+### 2. Activar Firestore
+1. En Firebase Console -> Firestore Database -> Create Database
+2. Seleccionar modo: 
+   - "Start in test mode" (desarrollo)
+   - "Start in production mode" (producción)
+3. Seleccionar región: "eur3 (europe-west)" recomendado para Europa
+
+### 3. Activar Storage (opcional)
+1. En Firebase Console -> Storage -> Get Started
+2. Seleccionar región (misma que Firestore)
+3. Iniciar con reglas de prueba
+
+### 4. Configurar Reglas de Seguridad
+
+Después de `firebase init`, modificar las reglas generadas:
+
+#### Rules: 
+  firestore.rules  
+  storage.rules
+
+## Configuración en el Proyecto Angular
+```bash
+    # Instalar dependencias
+    npm install firebase @angular/fire
+```
+
+**environment.development.ts y environment.ts**:
 ```typescript
-export const environment = {
-  firebase: {
-    apiKey: "TU_API_KEY",
-    authDomain: "tu-proyecto.firebaseapp.com",
-    projectId: "tu-proyecto",
-    storageBucket: "tu-proyecto.appspot.com",
-    messagingSenderId: "TU_MESSAGING_SENDER_ID",
-    appId: "TU_APP_ID"
-  }
-};
+    export const environment = {
+      production: false, // true en environment.ts
+      firebase: {
+        apiKey: "xxx",
+        authDomain: "mi-proyecto.firebaseapp.com",
+        projectId: "mi-proyecto",
+        storageBucket: "mi-proyecto.appspot.com",
+        messagingSenderId: "xxx",
+        appId: "xxx"
+      }
+    };
 ```
 
 **app.config.ts**:
 ```typescript
-providers: [
-  provideFirebaseApp(() => initializeApp(environment.firebase)),
-  provideFirestore(() => getFirestore()),
-  provideAuth(() => getAuth())
-]
+    import { ApplicationConfig } from '@angular/core';
+    import { provideRouter } from '@angular/router';
+    import { provideHttpClient } from '@angular/common/http';
+    import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+    import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+    import { getAuth, provideAuth } from '@angular/fire/auth';
+    import { environment } from '../environments/environment';
+
+    export const appConfig: ApplicationConfig = {
+      providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+        provideFirebaseApp(() => initializeApp(environment.firebase)),
+        provideFirestore(() => getFirestore()),
+        provideAuth(() => getAuth())
+      ]
+    };
 ```
 
-#### 2. Estructura de Datos
-
-```
-firestore/
-├── users/
-│   └── {userId}/
-│       ├── email
-│       ├── displayName
-│       └── role
-└── cycles/
-    └── {cycleId}/
-        ├── name
-        ├── startDate
-        └── endDate
-```
-
-#### 3. Uso en Servicios
-
-```typescript
-@Injectable({ providedIn: 'root' })
-export class UserService {
-  constructor(private firestore: Firestore) {}
-
-  getUsers(): Observable<User[]> {
-    return collectionData(collection(this.firestore, 'users'));
-  }
-
-  addUser(user: User) {
-    return addDoc(collection(this.firestore, 'users'), user);
-  }
-}
-```
-
-#### 4. Reglas de Seguridad
-
-```typescript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth.uid == userId;
-    }
-  }
-}
-```
-
-#### 5. Plan Gratuito
-- 1GB almacenamiento
-- 50,000 lecturas/día
-- 20,000 escrituras/día
-- Perfecto para desarrollo y apps pequeñas
-
-#### 6. Pasos en Firebase Console
-1. Crear proyecto en [console.firebase.google.com](https://console.firebase.google.com)
-2. Obtener credenciales (Configuración del Proyecto > App Web)
-3. Habilitar Authentication y Firestore
-4. Configurar métodos de autenticación deseados
-
-### Despliegue con Firebase Hosting
-
-Firebase Hosting ofrece una alternativa a Vercel para el despliegue de aplicaciones Angular, con ventajas como CDN global, HTTPS automático y mejor integración con servicios Firebase.
-
-#### Preparación (una sola vez en tu computadora)
+**Actualizar .gitignore**
 ```bash
-# Instalar Firebase CLI globalmente
-npm install -g firebase-tools
-
-# Iniciar sesión en Firebase
-firebase login
-
-Activar Firestore:
-  Ve a https://console.firebase.google.com/project/angular-firebase-hub/firestore
-  Haz clic en "Crear base de datos"
-  Se te presentarán dos opciones para el modo de seguridad:
-  ✅ Selecciona "Comenzar en modo de prueba"
-  Este modo permite lecturas/escrituras durante 30 días, perfecto para desarrollo
-  Selecciona la ubicación del servidor:
-  Recomiendo "eur3 (europe-west)" para Europa
-  O la región más cercana a tus usuarios objetivo
-
-Después de activar Firestore, Vuelve a la terminal
+    #Firebase
+    .firebase/.cache
 ```
 
-#### Configuración por Proyecto
-```bash
-# Inicializar Firebase en el proyecto
-firebase init
-
-# Seleccionar opciones:
-# ✓ Firestore: Configure security rules and indexes files for Firestore
-# ✓ Hosting: Configure files for Firebase Hosting
-# ✓ Storage: Configure a security rules file for Cloud Storage
-# ✓ Use an existing project
-# ✓ Select: angular-firebase-hub
-# ✓ Firestore Setup:
-#   - What file should be used for Firestore Rules? (firestore.rules)
-#   - What file should be used for Firestore indexes? (firestore.indexes.json)
-# ✓ Storage Setup:
-#   - What file should be used for Storage Rules? (storage.rules)
-# ✓ Hosting Setup:
-#   - What do you want to use as your public directory? dist/ng-shape-up
-#   - Configure as a single-page app (rewrite all urls to /index.html)? Yes
-#   - Set up automatic builds and deploys with GitHub? No
-
-  Firebase initialization complete!
-```
-
-Notas importantes:
-- Firestore debe estar activado previamente en la consola de Firebase
-- Se recomienda comenzar en modo de prueba para desarrollo
-- La ubicación del servidor recomendada es "eur3 (europe-west)" para Europa
-- Los archivos de reglas se crearán automáticamente en tu proyecto
-
-#### Configuración de firebase.json
-```json
-{
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
-  "hosting": {
-    "public": "dist/ng-shape-up",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
+**firebase.json**
+```typescript
+    {
+      "firestore": {
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
+      },
+      "hosting": {
+        "public": "dist/ng-shape-up/browser",
+        "ignore": [
+          "firebase.json",
+          "**/.*",
+          "**/node_modules/**"
+        ],
+        "rewrites": [
+          {
+            "source": "**",
+            "destination": "/index.html"
+          }
+        ]
+      },
+      "storage": {
+        "rules": "storage.rules"
       }
-    ]
-  },
-  "storage": {
-    "rules": "storage.rules"
-  }
-}
+    }
 ```
 
-#### Despliegue manual
+**angular.json** fileReplacements x2
+    - src/environments/environment.ts (producción)
+    - src/environments/environment.development.ts (desarrollo)
+
+## Despliegue
+
+  ### 1- Despliegue Manual (si es necesario)
 ```bash
-# Durante firebase init cuando pregunté:
-   ? Set up automatic builds and deploys with GitHub? No  # no se despliega automatico
+    # Limpiar caché de Angular
+    rm -rf .angular/cache
 
-# Construir la aplicación
-ng build
+    # Construir la aplicación
+    ng build
 
-# Desplegar a Firebase
-firebase deploy --only hosting
+    # Desplegar a Firebase
+    firebase deploy --only hosting
+
+    # Listar canales de hosting. Verificacion
+    firebase hosting:channel:list
+
+    # Ver URLs disponibles
+    firebase hosting:sites list
 ```
-
-#### Despliegue automatico
-```bash
-# Reinicializar Firebase con la opción de GitHub Actions
-firebase init hosting:github
-
-# Durante la configuración, selecciona:
-? For which GitHub repository would you like to set up a GitHub workflow? (format: user/repository)
-# Ingresa tu nombre de usuario y repositorio, por ejemplo: feriveragom/ng-shape-up
-
-? Set up the workflow to run a build script before every deploy? Yes
-
-? What script should be run before every deploy? npm ci && ng build
-  # npm ci instala las dependencias de forma limpia y determinista
-  # ng build es el comando específico de Angular para construir la aplicación
-
-? Set up automatic deployment to your site's live channel when a PR is merged? Yes
-
-? What is the name of the GitHub branch associated with your site's live channel? main
-
-+  Firebase initialization complete!
-
-  git add .
-  git commit -m "Despliegue automatico para firebase"
-  git push origin main
-
-  Después del despliegue, tu aplicación estará disponible en:
-  https://angular-firebase-hub.web.app
-  https://angular-firebase-hub.firebaseapp.com
-  Para verificar el estado de los despliegues puedes:
-  Ver los despliegues en GitHub Actions (en tu repositorio)
-  Usar el comando firebase hosting:list
-```
-
-#### URLs de Acceso
-Tu aplicación estará disponible en:
-- `https://angular-firebase-hub.web.app`
-- `https://angular-firebase-hub.firebaseapp.com`
-
-#### Ventajas sobre Vercel
-1. **Integración con Firebase**:
-   - Mejor comunicación con Firestore
-   - Menor latencia en operaciones de base de datos
-   - Configuración unificada
-
-2. **Características Adicionales**:
-   - CDN global de Google
-   - HTTPS automático
-   - Rollback con un clic
-   - Panel de control unificado
-
-3. **Rendimiento**:
-   - Caché automático
-   - Optimización de assets
-   - Compresión automática
-
-4. **Comandos Útiles**:
-```bash
-# Ver lista de despliegues
-firebase hosting:list
-
-# Rollback al último despliegue
-firebase hosting:rollback
-
-# Desplegar a un canal preview (para pruebas)
-firebase hosting:channel:deploy preview_name
-```
-
-#### Migración desde Vercel
-1. Desactivar auto-despliegues en Vercel
-2. Configurar Firebase según los pasos anteriores
-3. Actualizar URLs en documentación y servicios
-4. (Opcional) Eliminar proyecto de Vercel
-
-### Solución de Problemas con Environments
-
-Cuando se realizan cambios en la configuración de environments o se experimentan problemas con la compilación, puedes seguir estos pasos:
-
-```bash
-# 1. Detener el servidor de desarrollo
-# Presiona Ctrl+C si tienes ng serve corriendo
-
-# 2. Limpiar la caché de Angular
-rm -rf .angular/cache
-# Este comando elimina la caché de Angular, lo que ayuda a resolver problemas
-# de compilación después de cambios en la configuración
-
-# 3. Iniciar el servidor en modo desarrollo
-ng serve
-# Este comando inicia la aplicación en modo desarrollo
-# Usa environment.development.ts
-# Permite ver cambios en tiempo real
-# URL: http://localhost:4200
-
-# 4. Verificar el build de producción
-ng build
-# Este comando construye la aplicación en modo producción
-# Usa environment.ts (producción)
-# Genera los archivos optimizados en la carpeta dist/
-# Este es el comando que se usa antes de desplegar a Firebase
-
-Channels for site angular-firebase-hub
-
-┌────────────┬─────────────────────┬──────────────────────────────────────┬─────────────┐
-│ Channel ID │ Last Release Time   │ URL                                  │ Expire Time │
-├────────────┼─────────────────────┼──────────────────────────────────────┼─────────────┤
-│ live       │ 2025-04-10 16:03:58 │ https://angular-firebase-hub.web.app │ never   
-```
-
-#### ¿Qué logras con cada paso?
-
-1. **Detener el servidor**: Asegura que no hay procesos previos interfiriendo
-2. **Limpiar caché**: 
-   - Elimina archivos temporales de compilación
-   - Resuelve problemas de configuración obsoleta
-   - Fuerza una compilación limpia
-3. **Modo desarrollo**:
-   - Verifica que la aplicación funciona en entorno local
-   - Usa la configuración de desarrollo
-   - Permite desarrollo y pruebas rápidas
-4. **Build producción**:
-   - Verifica que la aplicación se puede construir para producción
-   - Genera archivos optimizados para despliegue
-   - Usa la configuración de producción
+  ### 2- Despliegue automático
+    .github\workflows\firebase-hosting-merge.yml
+    .github\workflows\firebase-hosting-pull-request.yml
