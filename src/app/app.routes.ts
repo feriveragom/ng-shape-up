@@ -1,31 +1,41 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './auth/guards/auth.guard';
-import { roleGuard } from './auth/guards/role.guard';
-import { UserRole } from './auth/models/user.model';
+import { AboutComponent } from './pages/about/about.component';
+import { DashboardComponent } from './features/dashboard/dashboard.component';
+import { UserManagementComponent } from './features/user-management/user-management.component';
+import { LoginComponent } from './auth/pages/login/login.component';
+import { RegisterComponent } from './auth/pages/register/register.component';
+import { ForgotPasswordComponent } from './auth/pages/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './auth/pages/reset-password/reset-password.component';
 
 export const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent)
+    component: AboutComponent
   },
-  
-  // Rutas protegidas
   {
     path: 'dashboard',
-    canActivate: [authGuard],
-    loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+    component: DashboardComponent
   },
-  
-  // Ruta de gestión de usuarios (solo admin)
   {
     path: 'user-management',
-    canActivate: [authGuard, roleGuard],
-    data: { roles: [UserRole.ADMIN] },
-    loadComponent: () => import('./features/user-management/user-management.component')
-      .then(m => m.UserManagementComponent)
+    component: UserManagementComponent
   },
-  
-  // Ruta por defecto (redirige a home)
+  {
+    path: 'auth/login',
+    component: LoginComponent
+  },
+  {
+    path: 'auth/register',
+    component: RegisterComponent
+  },
+  {
+    path: 'auth/forgot-password',
+    component: ForgotPasswordComponent
+  },
+  {
+    path: 'auth/reset-password',
+    component: ResetPasswordComponent
+  },
   {
     path: '**',
     redirectTo: ''
