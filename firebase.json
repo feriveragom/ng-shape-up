@@ -4,7 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "public": "dist/ng-shape-up",
+    "public": "dist/ng-shape-up/browser",
     "ignore": [
       "firebase.json",
       "**/.*",
