@@ -1291,4 +1291,46 @@ firebase hosting:channel:deploy preview_name
 3. Actualizar URLs en documentación y servicios
 4. (Opcional) Eliminar proyecto de Vercel
 
+### Solución de Problemas con Environments
 
+Cuando se realizan cambios en la configuración de environments o se experimentan problemas con la compilación, puedes seguir estos pasos:
+
+```bash
+# 1. Detener el servidor de desarrollo
+# Presiona Ctrl+C si tienes ng serve corriendo
+
+# 2. Limpiar la caché de Angular
+rm -rf .angular/cache
+# Este comando elimina la caché de Angular, lo que ayuda a resolver problemas
+# de compilación después de cambios en la configuración
+
+# 3. Iniciar el servidor en modo desarrollo
+ng serve
+# Este comando inicia la aplicación en modo desarrollo
+# Usa environment.development.ts
+# Permite ver cambios en tiempo real
+# URL: http://localhost:4200
+
+# 4. Verificar el build de producción
+ng build
+# Este comando construye la aplicación en modo producción
+# Usa environment.ts (producción)
+# Genera los archivos optimizados en la carpeta dist/
+# Este es el comando que se usa antes de desplegar a Firebase
+```
+
+#### ¿Qué logras con cada paso?
+
+1. **Detener el servidor**: Asegura que no hay procesos previos interfiriendo
+2. **Limpiar caché**: 
+   - Elimina archivos temporales de compilación
+   - Resuelve problemas de configuración obsoleta
+   - Fuerza una compilación limpia
+3. **Modo desarrollo**:
+   - Verifica que la aplicación funciona en entorno local
+   - Usa la configuración de desarrollo
+   - Permite desarrollo y pruebas rápidas
+4. **Build producción**:
+   - Verifica que la aplicación se puede construir para producción
+   - Genera archivos optimizados para despliegue
+   - Usa la configuración de producción
