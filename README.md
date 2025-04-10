@@ -1320,6 +1320,13 @@ ng build
 # Usa environment.ts (producción)
 # Genera los archivos optimizados en la carpeta dist/
 # Este es el comando que se usa antes de desplegar a Firebase
+
+Channels for site angular-firebase-hub
+
+┌────────────┬─────────────────────┬──────────────────────────────────────┬─────────────┐
+│ Channel ID │ Last Release Time   │ URL                                  │ Expire Time │
+├────────────┼─────────────────────┼──────────────────────────────────────┼─────────────┤
+│ live       │ 2025-04-10 16:03:58 │ https://angular-firebase-hub.web.app │ never   
 ```
 
 #### ¿Qué logras con cada paso?

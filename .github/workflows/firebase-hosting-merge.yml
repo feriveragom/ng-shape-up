@@ -16,16 +16,25 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
           
       - name: Install dependencies
         run: |
           npm ci
           npm install -g @angular/cli
           
-      - name: Build
+      - name: Build Angular app
         run: |
-          ng build
-          ls dist/ng-shape-up  # Verificar que la carpeta existe
+          ng build --configuration production
+          
+      - name: Verify build output
+        run: |
+          if [ ! -d "dist/ng-shape-up" ]; then
+            echo "Error: dist/ng-shape-up directory not found"
+            exit 1
+          fi
+          echo "Found files in dist/ng-shape-up:"
+          ls -la dist/ng-shape-up
           
       - name: Deploy to Firebase
         uses: FirebaseExtended/action-hosting-deploy@v0
