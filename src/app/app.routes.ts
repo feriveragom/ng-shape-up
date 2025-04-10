@@ -1,41 +1,53 @@
 import { Routes } from '@angular/router';
-import { AboutComponent } from './pages/about/about.component';
-import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { UserManagementComponent } from './features/user-management/user-management.component';
-import { LoginComponent } from './auth/pages/login/login.component';
-import { RegisterComponent } from './auth/pages/register/register.component';
-import { ForgotPasswordComponent } from './auth/pages/forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './auth/pages/reset-password/reset-password.component';
+import { authGuard } from './auth/guards/auth.guard';
 
 export const routes: Routes = [
+  // Ruta pública por defecto
   {
     path: '',
-    component: AboutComponent
+    loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent)
   },
+
+  // Rutas de autenticación agrupadas
   {
-    path: 'dashboard',
-    component: DashboardComponent
+    path: 'auth',
+    children: [
+      {
+        path: 'login',
+        loadComponent: () => import('./auth/pages/login/login.component').then(m => m.LoginComponent)
+      },
+      {
+        path: 'register',
+        loadComponent: () => import('./auth/pages/register/register.component').then(m => m.RegisterComponent)
+      },
+      {
+        path: 'forgot-password',
+        loadComponent: () => import('./auth/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent)
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () => import('./auth/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent)
+      }
+    ]
   },
+
+  // Rutas protegidas con lazy loading
   {
-    path: 'user-management',
-    component: UserManagementComponent
+    path: '',
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
+      },
+      {
+        path: 'user-management',
+        loadComponent: () => import('./features/user-management/user-management.component').then(m => m.UserManagementComponent)
+      }
+    ]
   },
-  {
-    path: 'auth/login',
-    component: LoginComponent
-  },
-  {
-    path: 'auth/register',
-    component: RegisterComponent
-  },
-  {
-    path: 'auth/forgot-password',
-    component: ForgotPasswordComponent
-  },
-  {
-    path: 'auth/reset-password',
-    component: ResetPasswordComponent
-  },
+
+  // Ruta para página no encontrada
   {
     path: '**',
     redirectTo: ''
