@@ -1082,7 +1082,8 @@ export class DataService {
     1- En la consola del proyecto, clic en icono web </>
     2- Nombre de la app: ng-shape-up
     3- Registrar app
-    4- Guardar configuración mostrada.
+    4- Guardar configuración mostrada (aplicación registrada).
+  
 ```bash  
       const firebaseConfig = {
         apiKey: "xxx",
@@ -1093,6 +1094,24 @@ export class DataService {
         appId: "xxx"
       };
 ```
+      4.1- Nota (4. y 5.) Aplicacion registrada
+        La aplicación registrada ("ng-shape-up Web App") es fundamental y cumple un propósito importante:
+        Contiene la configuración (apiKey, authDomain, etc.) que usas en tu código (environment.ts)
+        Es lo que permite a tu aplicación Angular conectarse con los servicios de Firebase (Auth, Firestore, etc.)
+        Proporciona las credenciales para que tu SPA pueda comunicarse con Firebase
+        Es completamente necesaria y no debes eliminarla. Lo que falta es el sitio de hosting, que es lo que determina la URL pública de tu app.
+        Son dos partes de un mismo ecosistema:
+        La Web App: configuración para la conexión desde el código
+        El Hosting Site: dónde se sirve la app compilada
+        No es confuso tener ambos con nombres similares; de hecho, es una práctica recomendada para mantener la coherencia.
+      5 Aplicacion Hosteada:
+```bash
+  #+  hosting:sites: Site ng-shape-up has been created in project angular-firebase-hub.
+  #+  hosting:sites: Site URL: https://ng-shape-up.web.app
+  firebase hosting:sites:create ng-shape-up
+  firebase target:apply hosting ng-shape-up-target ng-shape-up
+```
+
 
 ## Pasos de Configuración Local- Configurar Hosting
     1- Instalar Firebase CLI (si no está instalado):
@@ -1249,3 +1268,5 @@ Después de `firebase init`, modificar las reglas generadas:
   ### 2- Despliegue automático
     .github\workflows\firebase-hosting-merge.yml
     .github\workflows\firebase-hosting-pull-request.yml
+
+

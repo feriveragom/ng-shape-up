@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "angular-firebase-hub"
-  }
+  },
+  "targets": {
+    "angular-firebase-hub": {
+      "hosting": {
+        "ng-shape-up-target": [
+          "ng-shape-up"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }
