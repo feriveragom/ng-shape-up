@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, throwError } from 'rxjs';
 import { delay, tap } from 'rxjs/operators';
-import { User, UserRole, LoginRequest, RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest } from '../models/user.model';
+import { User, UserRole, ShapeUpGroup, LoginRequest, RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest } from '../models/user.model';
 
 @Injectable({
   providedIn: 'root'
@@ -26,7 +26,8 @@ export class AuthService {
         username: 'superadmin',
         password: 'feriveragom',
         token: 'admin-token',
-        roles: [UserRole.ADMIN, UserRole.USER] // Superadmin tiene ambos roles
+        roles: [UserRole.ADMIN, UserRole.USER], // Superadmin tiene ambos roles
+        groups: [ShapeUpGroup.TEAM_LEAD] // Por defecto, asignamos el grupo TEAM_LEAD al superadmin
       });
       console.log('Admin user created:', this.users);
     }
@@ -76,7 +77,8 @@ export class AuthService {
       username: userData.username,
       password: userData.password,
       token: `token-${Date.now()}`,
-      roles: [UserRole.USER] // Rol por defecto
+      roles: [UserRole.USER], // Rol por defecto
+      groups: [] // Sin grupos por defecto
     };
 
     // Agregar a la lista de usuarios
@@ -194,6 +196,128 @@ export class AuthService {
   currentUserHasRole(role: UserRole): boolean {
     const currentUser = this.currentUserSubject.value;
     return this.hasRole(currentUser, role);
+  }
+
+  // Métodos para gestión de grupos Shape Up
+
+  // Verificar si un usuario pertenece a un grupo
+  hasGroup(user: User | null, group: ShapeUpGroup): boolean {
+    return !!user?.groups?.includes(group);
+  }
+
+  // Verificar si el usuario actual pertenece a un grupo
+  currentUserHasGroup(group: ShapeUpGroup): boolean {
+    const currentUser = this.currentUserSubject.value;
+    return this.hasGroup(currentUser, group);
+  }
+
+  // Obtener todos los grupos de un usuario
+  getUserGroups(userId: string): Observable<ShapeUpGroup[]> {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) {
+      return throwError(() => new Error('Usuario no encontrado'));
+    }
+    return of(user.groups || []).pipe(delay(300));
+  }
+
+  // Actualizar los grupos de un usuario (solo admins)
+  updateUserGroups(userId: string, groups: ShapeUpGroup[]): Observable<User> {
+    // Verificar si el usuario actual es admin
+    if (!this.currentUserHasRole(UserRole.ADMIN)) {
+      return throwError(() => new Error('No tienes permiso para modificar grupos'));
+    }
+    
+    const userIndex = this.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+      return throwError(() => new Error('Usuario no encontrado'));
+    }
+    
+    // Actualizar grupos del usuario
+    this.users[userIndex] = {
+      ...this.users[userIndex],
+      groups: [...groups]
+    };
+    
+    // Si es el usuario actual, actualizar también en el subject
+    if (this.currentUserSubject.value?.id === userId) {
+      this.currentUserSubject.next({...this.users[userIndex]});
+      localStorage.setItem('currentUser', JSON.stringify(this.users[userIndex]));
+    }
+    
+    console.log('Grupos actualizados:', this.users[userIndex]);
+    return of(this.users[userIndex]).pipe(delay(500));
+  }
+
+  // Añadir un grupo a un usuario
+  addGroupToUser(userId: string, group: ShapeUpGroup): Observable<User> {
+    // Verificar si el usuario actual es admin
+    if (!this.currentUserHasRole(UserRole.ADMIN)) {
+      return throwError(() => new Error('No tienes permiso para modificar grupos'));
+    }
+    
+    const userIndex = this.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+      return throwError(() => new Error('Usuario no encontrado'));
+    }
+    
+    // Si el usuario ya tiene este grupo, no hacemos nada
+    if (this.users[userIndex].groups?.includes(group)) {
+      return of(this.users[userIndex]);
+    }
+    
+    // Clonar el array de grupos actual o crear uno nuevo
+    const updatedGroups = [...(this.users[userIndex].groups || []), group];
+    
+    // Actualizar el usuario
+    this.users[userIndex] = {
+      ...this.users[userIndex],
+      groups: updatedGroups
+    };
+    
+    // Si es el usuario actual, actualizar también en el subject
+    if (this.currentUserSubject.value?.id === userId) {
+      this.currentUserSubject.next({...this.users[userIndex]});
+      localStorage.setItem('currentUser', JSON.stringify(this.users[userIndex]));
+    }
+    
+    console.log('Grupo añadido:', this.users[userIndex]);
+    return of(this.users[userIndex]).pipe(delay(500));
+  }
+
+  // Quitar un grupo a un usuario
+  removeGroupFromUser(userId: string, group: ShapeUpGroup): Observable<User> {
+    // Verificar si el usuario actual es admin
+    if (!this.currentUserHasRole(UserRole.ADMIN)) {
+      return throwError(() => new Error('No tienes permiso para modificar grupos'));
+    }
+    
+    const userIndex = this.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+      return throwError(() => new Error('Usuario no encontrado'));
+    }
+    
+    // Si el usuario no tiene grupos o no tiene este grupo, no hacemos nada
+    if (!this.users[userIndex].groups || !this.users[userIndex].groups.includes(group)) {
+      return of(this.users[userIndex]);
+    }
+    
+    // Filtrar los grupos para quitar el especificado
+    const updatedGroups = this.users[userIndex].groups.filter(g => g !== group);
+    
+    // Actualizar el usuario
+    this.users[userIndex] = {
+      ...this.users[userIndex],
+      groups: updatedGroups
+    };
+    
+    // Si es el usuario actual, actualizar también en el subject
+    if (this.currentUserSubject.value?.id === userId) {
+      this.currentUserSubject.next({...this.users[userIndex]});
+      localStorage.setItem('currentUser', JSON.stringify(this.users[userIndex]));
+    }
+    
+    console.log('Grupo eliminado:', this.users[userIndex]);
+    return of(this.users[userIndex]).pipe(delay(500));
   }
 
   // Método para obtener todos los usuarios (solo para admins)

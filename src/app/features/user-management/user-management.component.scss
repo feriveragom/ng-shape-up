@@ -31,6 +31,31 @@
   color: #666;
 }
 
+// Estilos para las pestañas
+.management-tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dfe2e5;
+}
+
+.tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #586069;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  
+  &:hover {
+    color: #0366d6;
+  }
+}
+
+.active-tab {
+  color: #0366d6;
+  border-bottom: 2px solid #0366d6;
+}
+
 .users-table {
   width: 100%;
   border-collapse: collapse;
@@ -76,9 +101,11 @@
   color: #dc3545;
 }
 
+// Estilos para badges de roles
 .role-badges {
   display: flex;
   gap: 5px;
+  flex-wrap: wrap;
 }
 
 .role-badge {
@@ -98,13 +125,34 @@
   color: #457b9d;
 }
 
-.role-actions {
+// Estilos para badges de grupos
+.group-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.group-badge {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  background-color: #f0e6ff;
+  color: #6f42c1;
+}
+
+.no-groups {
+  font-style: italic;
+  color: #666;
+}
+
+.role-actions, .group-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.role-checkboxes {
+.role-checkboxes, .group-checkboxes {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -132,4 +180,65 @@
   padding: 20px;
   color: #666;
   font-style: italic;
+}
+
+// Estilos para la sección de permisos
+.permissions-section {
+  margin-top: 40px;
+  
+  h2 {
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    border-bottom: 1px solid #dfe2e5;
+    padding-bottom: 10px;
+  }
+}
+
+.permissions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.permission-card {
+  border: 1px solid #dfe2e5;
+  border-radius: 6px;
+  padding: 15px;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  
+  h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #24292e;
+  }
+  
+  .group-description {
+    margin-bottom: 15px;
+    color: #586069;
+    font-size: 0.9em;
+  }
+}
+
+.permissions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.permission-item {
+  padding: 8px;
+  background-color: #f6f8fa;
+  border-radius: 4px;
+  
+  .permission-name {
+    font-weight: 600;
+    color: #0366d6;
+  }
+  
+  .permission-description {
+    margin-top: 5px;
+    font-size: 0.85em;
+    color: #586069;
+  }
 } 

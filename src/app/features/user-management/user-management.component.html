@@ -13,68 +13,164 @@
     Cargando usuarios...
   </div>
   
-  <table class="users-table" *ngIf="!loading && users.length > 0">
-    <thead>
-      <tr>
-        <th>Username</th>
-        <th>Estado</th>
-        <th>Roles</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
-        <td>{{ user.username }}</td>
-        <td>
-          <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
-            {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
-          </span>
-        </td>
-        <td>
-          <div class="role-badges">
-            <span 
-              *ngFor="let role of user.roles" 
-              class="role-badge"
-              [class.admin-role]="role === 'ADMIN'"
-              [class.user-role]="role === 'USER'"
-            >
-              {{ role }}
+  <!-- Tabs de navegación -->
+  <div class="management-tabs" *ngIf="!loading && users.length > 0">
+    <div 
+      class="tab" 
+      [class.active-tab]="activeTab === 'roles'"
+      (click)="setActiveTab('roles')"
+    >
+      Roles
+    </div>
+    <div 
+      class="tab" 
+      [class.active-tab]="activeTab === 'groups'"
+      (click)="setActiveTab('groups')"
+    >
+      Grupos de Shape Up
+    </div>
+  </div>
+  
+  <!-- Tab de Roles (Vista original) -->
+  <div *ngIf="activeTab === 'roles' && !loading && users.length > 0">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Estado</th>
+          <th>Roles</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
+          <td>{{ user.username }}</td>
+          <td>
+            <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
+              {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
             </span>
-          </div>
-        </td>
-        <td>
-          <div class="role-actions">
-            <div class="role-checkboxes">
-              <div class="checkbox-group">
-                <label>
-                  <input 
-                    type="checkbox" 
-                    [(ngModel)]="selectedRoles[user.id!][UserRole.ADMIN]"
-                    [disabled]="isSuperAdmin(user)"
-                    [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
-                    (change)="onRoleChange(user)"
-                  />
-                  Administrador
-                </label>
+          </td>
+          <td>
+            <div class="role-badges">
+              <span 
+                *ngFor="let role of user.roles" 
+                class="role-badge"
+                [class.admin-role]="role === 'ADMIN'"
+                [class.user-role]="role === 'USER'"
+              >
+                {{ role }}
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="role-actions">
+              <div class="role-checkboxes">
+                <div class="checkbox-group">
+                  <label>
+                    <input 
+                      type="checkbox" 
+                      [(ngModel)]="selectedRoles[user.id!][UserRole.ADMIN]"
+                      [disabled]="isSuperAdmin(user)"
+                      [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
+                      (change)="onRoleChange(user)"
+                    />
+                    Administrador
+                  </label>
+                </div>
+                <div class="checkbox-group">
+                  <label>
+                    <input 
+                      type="checkbox"
+                      [(ngModel)]="selectedRoles[user.id!][UserRole.USER]"
+                      [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
+                      [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.USER]"
+                      (change)="onRoleChange(user)"
+                    />
+                    Usuario (Habilitado)
+                  </label>
+                </div>
               </div>
-              <div class="checkbox-group">
-                <label>
-                  <input 
-                    type="checkbox"
-                    [(ngModel)]="selectedRoles[user.id!][UserRole.USER]"
-                    [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
-                    [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.USER]"
-                    (change)="onRoleChange(user)"
-                  />
-                  Usuario (Habilitado)
-                </label>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  
+  <!-- Tab de Grupos Shape Up -->
+  <div *ngIf="activeTab === 'groups' && !loading && users.length > 0">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Estado</th>
+          <th>Grupos</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
+          <td>{{ user.username }}</td>
+          <td>
+            <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
+              {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
+            </span>
+          </td>
+          <td>
+            <div class="group-badges">
+              <span 
+                *ngFor="let group of user.groups" 
+                class="group-badge"
+              >
+                {{ getGroupDisplayName(group) }}
+              </span>
+              <span *ngIf="!user.groups || user.groups.length === 0" class="no-groups">
+                Sin grupos asignados
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="group-actions">
+              <div class="group-checkboxes">
+                <div *ngFor="let groupType of ShapeUpGroup | keyvalue" class="checkbox-group">
+                  <label>
+                    <input 
+                      type="checkbox"
+                      [(ngModel)]="selectedGroups[user.id!][groupType.value]"
+                      [disabled]="!isUserEnabled(user)"
+                      (change)="onGroupChange(user)"
+                    />
+                    {{ getGroupDisplayName(groupType.value) }}
+                  </label>
+                </div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <!-- Lista de Permisos por Grupo -->
+    <div class="permissions-section" *ngIf="!loadingGroups && groups.length > 0">
+      <h2>Permisos por Grupo</h2>
+      <div class="permissions-list">
+        <div *ngFor="let group of groups" class="permission-card">
+          <h3>{{ getGroupDisplayName(group.id) }}</h3>
+          <div *ngIf="group.description" class="group-description">
+            {{ group.description }}
+          </div>
+          <div class="permissions">
+            <div *ngFor="let permission of group.permissions" class="permission-item">
+              <div class="permission-name">{{ permission.name }}</div>
+              <div *ngIf="permission.description" class="permission-description">
+                {{ permission.description }}
               </div>
             </div>
           </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+        </div>
+      </div>
+    </div>
+  </div>
   
   <div class="no-users-message" *ngIf="!loading && users.length === 0">
     No hay usuarios registrados.

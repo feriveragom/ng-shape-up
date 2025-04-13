@@ -853,6 +853,101 @@ El sistema implementa un modelo de roles jerárquico para gestionar los permisos
 
 Este sistema de roles proporciona una base sólida para implementar políticas de seguridad y control de acceso, permitiendo una gestión efectiva de los usuarios según las necesidades del negocio.
 
+### Grupos y Permisos en Shape Up
+
+Además del sistema de roles básico, la aplicación implementa un sistema de grupos y permisos específico para la metodología Shape Up, permitiendo una gestión granular de las capacidades de cada usuario dentro del proceso de desarrollo.
+
+#### 1. Grupos Shape Up
+
+Los grupos representan los diferentes roles en la metodología Shape Up y determinan las responsabilidades específicas de cada usuario:
+
+- **SHAPER**: Define y da forma a los proyectos, identificando problemas y oportunidades.
+- **STAKEHOLDER**: Representa intereses del negocio y proporciona feedback desde la perspectiva de valor.
+- **BUILDER**: Desarrolladores responsables de implementar las soluciones.
+- **DESIGNER**: Encargados del diseño de la experiencia de usuario y la interfaz.
+- **QA**: Responsables de asegurar la calidad del producto.
+- **TEAM_LEAD**: Líderes de equipo que coordinan el trabajo diario.
+- **TECH_LEAD**: Referentes técnicos que guían las decisiones de arquitectura e implementación.
+
+#### 2. Sistema de Permisos
+
+Cada grupo tiene asociado un conjunto de permisos específicos:
+
+- **Permisos Base**: Inicialmente, cada grupo tiene un permiso con el mismo nombre del grupo.
+- **Permisos Extensibles**: El sistema permite añadir más permisos a cada grupo según las necesidades del proyecto.
+- **Herencia**: Un usuario puede pertenecer a múltiples grupos, acumulando todos los permisos asociados.
+
+#### 3. Relación con Roles
+
+- Los grupos y permisos son complementarios al sistema de roles.
+- Los roles (ADMIN/USER) determinan el acceso general a la aplicación.
+- Los grupos/permisos determinan capacidades específicas dentro del flujo de trabajo Shape Up.
+
+#### 4. Modelo de Datos
+
+```typescript
+// Enumeración de grupos Shape Up
+export enum ShapeUpGroup {
+  SHAPER = 'SHAPER',
+  STAKEHOLDER = 'STAKEHOLDER',
+  BUILDER = 'BUILDER',
+  DESIGNER = 'DESIGNER',
+  QA = 'QA',
+  TEAM_LEAD = 'TEAM_LEAD',
+  TECH_LEAD = 'TECH_LEAD'
+}
+
+// Modelo de permiso
+export interface Permission {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+// Modelo de grupo con sus permisos
+export interface Group {
+  id: ShapeUpGroup;
+  name: string;
+  description?: string;
+  permissions: Permission[];
+}
+
+// Extensión del modelo de usuario
+export interface User {
+  // Campos existentes...
+  groups?: ShapeUpGroup[]; // Grupos a los que pertenece el usuario
+}
+```
+
+#### 5. Gestión de Grupos y Permisos
+
+El sistema incluye una interfaz de administración que permite:
+
+- **Asignar Grupos**: Añadir o quitar usuarios de diferentes grupos Shape Up.
+- **Configurar Permisos**: Añadir, modificar o eliminar permisos para cada grupo.
+- **Visualizar Asignaciones**: Ver qué usuarios pertenecen a qué grupos y qué permisos tienen.
+
+#### 6. Verificación de Permisos
+
+Para verificar si un usuario tiene un permiso específico:
+
+```typescript
+// Comprobar si un usuario tiene un permiso específico
+hasPermission(user: User, permissionName: string): boolean {
+  if (!user.groups || user.groups.length === 0) {
+    return false;
+  }
+  
+  // Obtener todos los permisos de todos los grupos del usuario
+  const userPermissions = getAllPermissionsByGroups(user.groups);
+  
+  // Verificar si el permiso específico está en la lista
+  return userPermissions.some(p => p.name === permissionName);
+}
+```
+
+Este sistema de grupos y permisos complementa el sistema de roles existente, proporcionando un control de acceso más detallado y específico para el contexto de Shape Up.
+
 ### Observables y Servicios en Angular
 
 #### 1. Observables en Angular
