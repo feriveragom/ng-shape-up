@@ -1,14 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../auth/services/auth.service';
 import { GroupService } from '../../auth/services/group.service';
+import { PermissionService } from '../../auth/services/permission.service';
 import { User, UserRole, ShapeUpGroup, Group, Permission } from '../../auth/models/user.model';
+import { forkJoin, of } from 'rxjs';
+import { catchError, tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule],
   templateUrl: './user-management.component.html',
   styleUrls: ['./user-management.component.scss']
 })
@@ -17,22 +20,40 @@ export class UserManagementComponent implements OnInit {
   ShapeUpGroup = ShapeUpGroup; // Para usar en el template
   users: User[] = [];
   groups: Group[] = [];
+  permissions: Permission[] = [];
   selectedRoles: { [key: string]: { [role: string]: boolean } } = {};
   selectedGroups: { [key: string]: { [group: string]: boolean } } = {};
+  selectedGroupPermissions: { [groupId: string]: { [permissionId: string]: boolean } } = {};
   loading = true;
   loadingGroups = true;
+  loadingPermissions = true;
   message = '';
   error = '';
-  activeTab = 'roles'; // 'roles' o 'groups'
+  activeTab = 'roles'; // 'roles', 'groups', 'permissions', 'group-permissions'
+  
+  // Formulario para crear nuevos permisos
+  permissionForm: FormGroup;
+  editingPermission: Permission | null = null;
+  
+  // Variables para controlar edición
+  selectedGroupForPermissions: ShapeUpGroup | null = null;
 
   constructor(
+    private fb: FormBuilder,
     private authService: AuthService,
-    private groupService: GroupService
-  ) {}
+    private groupService: GroupService,
+    private permissionService: PermissionService
+  ) {
+    this.permissionForm = this.fb.group({
+      name: ['', [Validators.required, Validators.minLength(3)]],
+      description: ['', Validators.required]
+    });
+  }
 
   ngOnInit(): void {
     this.loadUsers();
     this.loadGroups();
+    this.loadPermissions();
   }
 
   loadUsers(): void {
@@ -72,11 +93,35 @@ export class UserManagementComponent implements OnInit {
     this.groupService.getAllGroups().subscribe({
       next: (groups) => {
         this.groups = groups;
+        
+        // Inicializar la selección de permisos para cada grupo
+        groups.forEach(group => {
+          this.selectedGroupPermissions[group.id] = {};
+          group.permissions.forEach(permission => {
+            this.selectedGroupPermissions[group.id][permission.id] = true;
+          });
+        });
+        
         this.loadingGroups = false;
       },
       error: (err) => {
         this.error = 'Error al cargar grupos: ' + err.message;
         this.loadingGroups = false;
+      }
+    });
+  }
+  
+  loadPermissions(): void {
+    this.loadingPermissions = true;
+    
+    this.permissionService.getAllPermissions().subscribe({
+      next: (permissions) => {
+        this.permissions = permissions;
+        this.loadingPermissions = false;
+      },
+      error: (err) => {
+        this.error = 'Error al cargar permisos: ' + err.message;
+        this.loadingPermissions = false;
       }
     });
   }
@@ -175,6 +220,131 @@ export class UserManagementComponent implements OnInit {
         setTimeout(() => this.error = '', 3000);
       }
     });
+  }
+  
+  // Métodos para gestión de permisos
+  onSubmitPermission(): void {
+    if (this.permissionForm.invalid) {
+      return;
+    }
+    
+    const permissionData = this.permissionForm.value;
+    
+    if (this.editingPermission) {
+      // Editar permiso existente
+      this.permissionService.updatePermission(this.editingPermission.id, permissionData).subscribe({
+        next: (updatedPermission) => {
+          // Actualizar permiso en la lista
+          const index = this.permissions.findIndex(p => p.id === updatedPermission.id);
+          if (index !== -1) {
+            this.permissions[index] = updatedPermission;
+          }
+          
+          this.message = `Permiso '${updatedPermission.name}' actualizado`;
+          this.resetPermissionForm();
+          setTimeout(() => this.message = '', 3000);
+        },
+        error: (err) => {
+          this.error = 'Error al actualizar permiso: ' + err.message;
+          setTimeout(() => this.error = '', 3000);
+        }
+      });
+    } else {
+      // Crear nuevo permiso
+      this.permissionService.addPermission(permissionData).subscribe({
+        next: (newPermission) => {
+          this.permissions = [...this.permissions, newPermission];
+          this.message = `Permiso '${newPermission.name}' creado`;
+          this.resetPermissionForm();
+          setTimeout(() => this.message = '', 3000);
+        },
+        error: (err) => {
+          this.error = 'Error al crear permiso: ' + err.message;
+          setTimeout(() => this.error = '', 3000);
+        }
+      });
+    }
+  }
+  
+  editPermission(permission: Permission): void {
+    this.editingPermission = permission;
+    this.permissionForm.patchValue({
+      name: permission.name,
+      description: permission.description
+    });
+  }
+  
+  deletePermission(permissionId: string): void {
+    if (confirm('¿Estás seguro de eliminar este permiso? Esta acción no se puede deshacer.')) {
+      this.permissionService.deletePermission(permissionId).subscribe({
+        next: () => {
+          this.permissions = this.permissions.filter(p => p.id !== permissionId);
+          this.message = 'Permiso eliminado correctamente';
+          setTimeout(() => this.message = '', 3000);
+        },
+        error: (err) => {
+          this.error = 'Error al eliminar permiso: ' + err.message;
+          setTimeout(() => this.error = '', 3000);
+        }
+      });
+    }
+  }
+  
+  resetPermissionForm(): void {
+    this.permissionForm.reset();
+    this.editingPermission = null;
+  }
+  
+  // Métodos para asignar permisos a grupos
+  selectGroupForPermissions(group: Group): void {
+    this.selectedGroupForPermissions = group.id;
+    
+    // Reiniciar las selecciones
+    this.permissions.forEach(permission => {
+      if (!this.selectedGroupPermissions[group.id]) {
+        this.selectedGroupPermissions[group.id] = {};
+      }
+      
+      // Marcar los permisos que el grupo ya tiene
+      this.selectedGroupPermissions[group.id][permission.id] = 
+        group.permissions.some(p => p.id === permission.id);
+    });
+  }
+  
+  saveGroupPermissions(): void {
+    if (!this.selectedGroupForPermissions) {
+      return;
+    }
+    
+    // Convertir objeto de checkboxes a array de IDs de permisos
+    const permissionIds: string[] = [];
+    
+    Object.entries(this.selectedGroupPermissions[this.selectedGroupForPermissions]).forEach(([permissionId, isSelected]) => {
+      if (isSelected) {
+        permissionIds.push(permissionId);
+      }
+    });
+    
+    this.groupService.setGroupPermissions(this.selectedGroupForPermissions, permissionIds).subscribe({
+      next: (updatedGroup) => {
+        // Actualizar grupo en la lista
+        const index = this.groups.findIndex(g => g.id === updatedGroup.id);
+        if (index !== -1) {
+          this.groups[index] = updatedGroup;
+        }
+        
+        this.message = `Permisos actualizados para el grupo ${updatedGroup.name}`;
+        setTimeout(() => this.message = '', 3000);
+      },
+      error: (err) => {
+        this.error = 'Error al actualizar permisos del grupo: ' + err.message;
+        setTimeout(() => this.error = '', 3000);
+      }
+    });
+  }
+  
+  cancelEditGroupPermissions(): void {
+    this.selectedGroupForPermissions = null;
   }
   
   setActiveTab(tab: string): void {

@@ -9,12 +9,12 @@
     {{ error }}
   </div>
   
-  <div class="loading-indicator" *ngIf="loading">
-    Cargando usuarios...
+  <div class="loading-indicator" *ngIf="loading && loadingGroups && loadingPermissions">
+    Cargando datos...
   </div>
   
   <!-- Tabs de navegación -->
-  <div class="management-tabs" *ngIf="!loading && users.length > 0">
+  <div class="management-tabs" *ngIf="!(loading && loadingGroups && loadingPermissions)">
     <div 
       class="tab" 
       [class.active-tab]="activeTab === 'roles'"
@@ -27,7 +27,21 @@
       [class.active-tab]="activeTab === 'groups'"
       (click)="setActiveTab('groups')"
     >
-      Grupos de Shape Up
+      Grupos
+    </div>
+    <div 
+      class="tab" 
+      [class.active-tab]="activeTab === 'permissions'"
+      (click)="setActiveTab('permissions')"
+    >
+      Permisos
+    </div>
+    <div 
+      class="tab" 
+      [class.active-tab]="activeTab === 'group-permissions'"
+      (click)="setActiveTab('group-permissions')"
+    >
+      Asignar Permisos
     </div>
   </div>
   
@@ -160,10 +174,16 @@
             {{ group.description }}
           </div>
           <div class="permissions">
-            <div *ngFor="let permission of group.permissions" class="permission-item">
-              <div class="permission-name">{{ permission.name }}</div>
-              <div *ngIf="permission.description" class="permission-description">
-                {{ permission.description }}
+            <div *ngIf="group.permissions.length === 0" class="no-permissions-message">
+              Este grupo no tiene permisos asignados.
+            </div>
+            <div class="permission-badges" *ngIf="group.permissions.length > 0">
+              <div *ngFor="let permission of group.permissions" class="permission-badge">
+                <span class="permission-badge-name">{{ permission.name }}</span>
+                <span class="permission-badge-id">{{ permission.id }}</span>
+                <div *ngIf="permission.description" class="permission-badge-description">
+                  {{ permission.description }}
+                </div>
               </div>
             </div>
           </div>
@@ -172,7 +192,173 @@
     </div>
   </div>
   
-  <div class="no-users-message" *ngIf="!loading && users.length === 0">
+  <!-- Tab de Gestión de Permisos -->
+  <div *ngIf="activeTab === 'permissions' && !loadingPermissions">
+    <div class="permissions-container">
+      <div class="permissions-form-section">
+        <h2>{{ editingPermission ? 'Editar Permiso' : 'Crear Nuevo Permiso' }}</h2>
+        
+        <form [formGroup]="permissionForm" (ngSubmit)="onSubmitPermission()" class="permission-form">
+          <div class="form-field">
+            <label for="name">Nombre de Permiso:</label>
+            <input 
+              type="text" 
+              id="name" 
+              formControlName="name" 
+              placeholder="Ej: Gestionar Documentación"
+            >
+            <div *ngIf="permissionForm.get('name')?.invalid && permissionForm.get('name')?.touched" class="form-error">
+              <span *ngIf="permissionForm.get('name')?.errors?.['required']">El nombre es obligatorio</span>
+              <span *ngIf="permissionForm.get('name')?.errors?.['minlength']">El nombre debe tener al menos 3 caracteres</span>
+            </div>
+          </div>
+          
+          <div class="form-field">
+            <label for="description">Descripción:</label>
+            <textarea 
+              id="description" 
+              formControlName="description" 
+              placeholder="Ej: Permite gestionar la documentación técnica del proyecto"
+              rows="3"
+            ></textarea>
+            <div *ngIf="permissionForm.get('description')?.invalid && permissionForm.get('description')?.touched" class="form-error">
+              La descripción es obligatoria
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              type="submit" 
+              [disabled]="permissionForm.invalid"
+              class="primary-button"
+            >
+              {{ editingPermission ? 'Actualizar Permiso' : 'Crear Permiso' }}
+            </button>
+            
+            <button 
+              *ngIf="editingPermission"
+              type="button" 
+              class="secondary-button"
+              (click)="resetPermissionForm()"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="permissions-list-section">
+        <h2>Permisos Disponibles</h2>
+        
+        <div *ngIf="permissions.length === 0" class="no-permissions-message">
+          No hay permisos definidos. Crea el primero usando el formulario.
+        </div>
+        
+        <table *ngIf="permissions.length > 0" class="permissions-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let permission of permissions">
+              <td>{{ permission.id }}</td>
+              <td>{{ permission.name }}</td>
+              <td>{{ permission.description }}</td>
+              <td>
+                <div class="permission-actions">
+                  <button 
+                    class="edit-button"
+                    (click)="editPermission(permission)"
+                  >
+                    Editar
+                  </button>
+                  <button 
+                    class="delete-button"
+                    (click)="deletePermission(permission.id)"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Tab de Asignación de Permisos a Grupos -->
+  <div *ngIf="activeTab === 'group-permissions' && !loadingGroups && !loadingPermissions">
+    <div class="group-permissions-container">
+      <div *ngIf="!selectedGroupForPermissions" class="group-selection-section">
+        <h2>Selecciona un Grupo para Gestionar sus Permisos</h2>
+        
+        <div class="groups-grid">
+          <div 
+            *ngFor="let group of groups" 
+            class="group-card"
+            (click)="selectGroupForPermissions(group)"
+          >
+            <h3>{{ getGroupDisplayName(group.id) }}</h3>
+            <p class="group-description">{{ group.description }}</p>
+            <div class="group-permissions-count">
+              {{ group.permissions.length }} permisos asignados
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div *ngIf="selectedGroupForPermissions" class="group-permission-edit-section">
+        <div class="edit-header">
+          <h2>Gestionar Permisos del Grupo: {{ getGroupDisplayName(selectedGroupForPermissions) }}</h2>
+          <button class="back-button" (click)="cancelEditGroupPermissions()">Volver a la lista de grupos</button>
+        </div>
+        
+        <div *ngIf="permissions.length === 0" class="no-permissions-message">
+          No hay permisos disponibles para asignar. Crea algunos primero en la pestaña de Permisos.
+        </div>
+        
+        <div *ngIf="permissions.length > 0" class="permissions-selection">
+          <div class="permissions-checkboxes">
+            <div *ngFor="let permission of permissions" class="permission-checkbox-group">
+              <label>
+                <input 
+                  type="checkbox"
+                  [(ngModel)]="selectedGroupPermissions[selectedGroupForPermissions][permission.id]"
+                />
+                <div class="permission-details">
+                  <span class="permission-name">{{ permission.name }}</span>
+                  <span class="permission-id">({{ permission.id }})</span>
+                  <p class="permission-description">{{ permission.description }}</p>
+                </div>
+              </label>
+            </div>
+          </div>
+          
+          <div class="permission-edit-actions">
+            <button 
+              class="primary-button"
+              (click)="saveGroupPermissions()"
+            >
+              Guardar Permisos
+            </button>
+            <button 
+              class="secondary-button"
+              (click)="cancelEditGroupPermissions()"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="no-users-message" *ngIf="!loading && users.length === 0 && (activeTab === 'roles' || activeTab === 'groups')">
     No hay usuarios registrados.
   </div>
 </div> 

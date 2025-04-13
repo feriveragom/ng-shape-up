@@ -2,6 +2,7 @@
 
   https://angular-firebase-hub.web.app
   https://angular-firebase-hub.firebaseapp.com
+  https://ng-shape-up.web.app/
 
 ## Conceptos de Angular
 
@@ -912,10 +913,14 @@ export interface Group {
   permissions: Permission[];
 }
 
-// Extensión del modelo de usuario
+// Define la estructura de un usuario
 export interface User {
-  // Campos existentes...
-  groups?: ShapeUpGroup[]; // Grupos a los que pertenece el usuario
+  id?: string;
+  username: string;
+  password?: string;
+  token?: string;
+  roles?: UserRole[];
+  groups?: ShapeUpGroup[];
 }
 ```
 
