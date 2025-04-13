@@ -10,19 +10,19 @@
     
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <div class="form-group">
-        <label for="email">Email</label>
+        <label for="username">Username</label>
         <input 
-          type="email" 
-          id="email" 
-          formControlName="email" 
-          placeholder="Ingresa tu correo electrónico"
+          type="text" 
+          id="username" 
+          formControlName="username" 
+          placeholder="Ingresa tu nombre de usuario"
         >
-        @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
+        @if (loginForm.get('username')?.invalid && loginForm.get('username')?.touched) {
           <div class="form-error">
-            @if (loginForm.get('email')?.errors?.['required']) {
-              El email es obligatorio
-            } @else if (loginForm.get('email')?.errors?.['email']) {
-              Ingrese un email válido
+            @if (loginForm.get('username')?.errors?.['required']) {
+              El username es obligatorio
+            } @else if (loginForm.get('username')?.errors?.['minlength']) {
+              El username debe tener al menos 6 caracteres
             }
           </div>
         }

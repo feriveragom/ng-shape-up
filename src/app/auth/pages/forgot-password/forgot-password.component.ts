@@ -16,9 +16,10 @@ export class ForgotPasswordComponent {
   isSubmitting = false;
   
   // Estados para mostrar resultados
-  emailChecked = false;
-  emailValue = '';
+  usernameChecked = false;
+  usernameValue = '';
   isRegistered = false;
+  isDisabled = false;
   passwordValue = '';
 
   constructor(
@@ -26,7 +27,7 @@ export class ForgotPasswordComponent {
     private authService: AuthService
   ) {
     this.forgotForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]]
+      username: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
 
@@ -36,19 +37,26 @@ export class ForgotPasswordComponent {
     }
 
     this.isSubmitting = true;
-    this.emailChecked = false;
-    this.emailValue = this.forgotForm.value.email;
+    this.usernameChecked = false;
+    this.usernameValue = this.forgotForm.value.username;
+    this.isDisabled = false;
 
-    console.log('Enviando solicitud para:', this.emailValue);
+    console.log('Enviando solicitud para:', this.usernameValue);
 
-    this.authService.forgotPassword({ email: this.emailValue }).subscribe({
+    this.authService.forgotPassword({ username: this.usernameValue }).subscribe({
       next: (result) => {
         console.log('Resultado:', result);
-        this.emailChecked = true;
+        this.usernameChecked = true;
         
         if (result) {
           this.isRegistered = true;
-          this.passwordValue = result.password;
+          if (result.isDisabled) {
+            this.isDisabled = true;
+            this.passwordValue = '';
+          } else {
+            this.isDisabled = false;
+            this.passwordValue = result.password || '';
+          }
         } else {
           this.isRegistered = false;
           this.passwordValue = '';
@@ -56,8 +64,9 @@ export class ForgotPasswordComponent {
       },
       error: (error) => {
         console.error('Error en recuperación:', error);
-        this.emailChecked = true;
+        this.usernameChecked = true;
         this.isRegistered = false;
+        this.isDisabled = false;
       },
       complete: () => {
         this.isSubmitting = false;

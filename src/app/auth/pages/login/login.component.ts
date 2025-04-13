@@ -6,7 +6,7 @@ import { AuthService } from '../../services/auth.service';
 
 export interface User {
   id?: string;
-  email: string;
+  username: string;
   name?: string;
   password?: string;
   token?: string;
@@ -31,7 +31,7 @@ export class LoginComponent {
     private authService: AuthService
   ) {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      username: ['', [Validators.required, Validators.minLength(6)]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }

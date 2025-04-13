@@ -5,30 +5,28 @@ export enum UserRole {
 
 export interface User {
   id?: string;
-  email: string;
-  name?: string;
+  username: string;
   password?: string;
   token?: string;
   roles?: UserRole[];
 }
 
 export interface LoginRequest {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface RegisterRequest {
-  email: string;
+  username: string;
   password: string;
-  name: string;
 }
 
 export interface ForgotPasswordRequest {
-  email: string;
+  username: string;
 }
 
 export interface ResetPasswordRequest {
-  email: string;
+  username: string;
   token: string;
   newPassword: string;
 } 

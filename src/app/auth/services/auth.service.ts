@@ -17,17 +17,16 @@ export class AuthService {
 
   constructor(private router: Router) {
     // Verificamos si ya tenemos un administrador por defecto
-    const adminExists = this.users.some(u => u.email === 'feriveragom@gmail.com');
+    const adminExists = this.users.some(u => u.username === 'superadmin');
     
     // Si no existe, lo creamos
     if (!adminExists) {
       this.users.push({
         id: '0',
-        email: 'feriveragom@gmail.com',
-        name: 'Admin',
+        username: 'superadmin',
         password: 'feriveragom',
         token: 'admin-token',
-        roles: [UserRole.ADMIN]
+        roles: [UserRole.ADMIN, UserRole.USER] // Superadmin tiene ambos roles
       });
       console.log('Admin user created:', this.users);
     }
@@ -60,17 +59,21 @@ export class AuthService {
 
   // Método para registro
   register(userData: RegisterRequest): Observable<User> {
-    // Verificar si el email ya existe
-    const existingUser = this.users.find(u => u.email === userData.email);
+    // Verificar si el username ya existe
+    const existingUser = this.users.find(u => u.username === userData.username);
     if (existingUser) {
-      return throwError(() => new Error('El email ya está registrado'));
+      return throwError(() => new Error('El username ya está registrado'));
+    }
+
+    // Verificar si intenta registrarse con el nombre del superadmin
+    if (userData.username === 'superadmin') {
+      return throwError(() => new Error('Este nombre de usuario está reservado'));
     }
 
     // Crear nuevo usuario INCLUYENDO la contraseña
     const newUser: User = {
       id: (this.users.length + 1).toString(),
-      email: userData.email,
-      name: userData.name,
+      username: userData.username,
       password: userData.password,
       token: `token-${Date.now()}`,
       roles: [UserRole.USER] // Rol por defecto
@@ -115,37 +118,54 @@ export class AuthService {
 
   private validateUser(credentials: LoginRequest): Observable<User> {
     const user = this.users.find(u => 
-      u.email === credentials.email && 
+      u.username === credentials.username && 
       credentials.password === credentials.password // Usar contraseña del usuario
     );
 
     if (user) {
+      // Verificar si el usuario está habilitado (tiene el rol USER)
+      if (!user.roles?.includes(UserRole.USER)) {
+        return throwError(() => new Error('Usuario deshabilitado. Contacte al administrador.'));
+      }
       return of({ ...user });
     } else {
-      return throwError(() => new Error('Email o contraseña incorrectos'));
+      return throwError(() => new Error('Username o contraseña incorrectos'));
     }
   }
 
   // Solicitar recuperación de contraseña
-  forgotPassword(request: ForgotPasswordRequest): Observable<{email: string, password: string} | null> {
-    console.log('Buscando email:', request.email);
+  forgotPassword(request: ForgotPasswordRequest): Observable<{username: string, password?: string, isDisabled?: boolean} | null> {
+    console.log('Buscando username:', request.username);
     console.log('Lista de usuarios:', this.users);
     
-    // Buscar el usuario por email
+    // Buscar el usuario por username
     const user = this.users.find(u => 
-      u.email.toLowerCase() === request.email.toLowerCase()
+      u.username.toLowerCase() === request.username.toLowerCase()
     );
     
     console.log('Usuario encontrado:', user);
     
     if (user) {
-      // Si existe, devolver sus credenciales
-      return of({
-        email: user.email,
-        password: user.password || 'Sin contraseña guardada'
-      }).pipe(
-        delay(500)
-      );
+      // Verificar si el usuario está deshabilitado (no tiene el rol USER)
+      const isDisabled = !user.roles?.includes(UserRole.USER);
+      
+      if (isDisabled) {
+        // Si el usuario está deshabilitado, devolver sólo el username y un indicador
+        return of({
+          username: user.username,
+          isDisabled: true
+        }).pipe(
+          delay(500)
+        );
+      } else {
+        // Si el usuario está habilitado, devolver sus credenciales
+        return of({
+          username: user.username,
+          password: user.password || 'Sin contraseña guardada'
+        }).pipe(
+          delay(500)
+        );
+      }
     } else {
       // Si no existe, devolver null
       return of(null).pipe(
@@ -160,7 +180,7 @@ export class AuthService {
     return of(undefined).pipe(
       delay(800),  // Simulamos latencia
       tap(() => {
-        console.log('Contraseña reseteada para:', request.email);
+        console.log('Contraseña reseteada para:', request.username);
       })
     );
   }
@@ -202,6 +222,16 @@ export class AuthService {
     const userIndex = this.users.findIndex(u => u.id === userId);
     if (userIndex === -1) {
       return throwError(() => new Error('Usuario no encontrado'));
+    }
+    
+    // Si el usuario es el superadmin, no permitir cambios en sus roles
+    if (this.users[userIndex].username === 'superadmin') {
+      return throwError(() => new Error('No se pueden modificar los roles del superadmin'));
+    }
+    
+    // Si el usuario tiene el rol ADMIN, asegurarse de que también tenga USER
+    if (roles.includes(UserRole.ADMIN) && !roles.includes(UserRole.USER)) {
+      roles.push(UserRole.USER);
     }
     
     // Actualizar roles del usuario

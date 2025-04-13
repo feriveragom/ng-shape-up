@@ -17,7 +17,7 @@ export class ResetPasswordComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
   token = '';
-  email = '';
+  username = '';
 
   constructor(
     private fb: FormBuilder,
@@ -34,12 +34,12 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Obtenemos token y email de los parámetros de la ruta
+    // Obtenemos token y username de los parámetros de la ruta
     this.route.queryParams.subscribe(params => {
       this.token = params['token'] || '';
-      this.email = params['email'] || '';
+      this.username = params['username'] || '';
       
-      if (!this.token || !this.email) {
+      if (!this.token || !this.username) {
         this.errorMessage = 'Enlace inválido o expirado. Por favor solicita un nuevo enlace.';
       }
     });
@@ -53,7 +53,7 @@ export class ResetPasswordComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.resetForm.invalid || !this.token || !this.email) {
+    if (this.resetForm.invalid || !this.token || !this.username) {
       return;
     }
 
@@ -62,7 +62,7 @@ export class ResetPasswordComponent implements OnInit {
     this.successMessage = '';
 
     const request = {
-      email: this.email,
+      username: this.username,
       token: this.token,
       newPassword: this.resetForm.value.newPassword
     };

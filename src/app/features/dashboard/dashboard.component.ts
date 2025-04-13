@@ -123,7 +123,7 @@ export class DashboardComponent {
     // Obtener el nombre del usuario autenticado
     const currentUser = this.authService.currentUser$.subscribe(user => {
       if (user) {
-        this.userName = user.name || user.email;
+        this.userName = user.username;
       }
     });
   }

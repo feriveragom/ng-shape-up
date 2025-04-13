@@ -50,16 +50,30 @@ export class UserManagementComponent implements OnInit {
     });
   }
 
-  isFeriveragom(user: User): boolean {
-    return user.email === 'feriveragom@gmail.com';
+  isSuperAdmin(user: User): boolean {
+    return user.username === 'superadmin';
+  }
+  
+  isAdmin(user: User): boolean {
+    return user.roles?.includes(UserRole.ADMIN) || false;
+  }
+
+  isUserEnabled(user: User): boolean {
+    return user.roles?.includes(UserRole.USER) || false;
   }
 
   onRoleChange(user: User): void {
-    // No permitir actualizar a feriveragom
-    if (this.isFeriveragom(user)) {
-      // Restaurar el valor del admin para feriveragom (siempre debe ser admin)
+    // No permitir actualizar al superadmin
+    if (this.isSuperAdmin(user)) {
+      // Restaurar los valores del superadmin (siempre debe ser admin y user)
       this.selectedRoles[user.id!][UserRole.ADMIN] = true;
+      this.selectedRoles[user.id!][UserRole.USER] = true;
       return;
+    }
+    
+    // Si el usuario es admin, asegurarse de que también sea USER
+    if (this.selectedRoles[user.id!][UserRole.ADMIN]) {
+      this.selectedRoles[user.id!][UserRole.USER] = true;
     }
 
     // Convertir objeto de checkboxes a array de roles
@@ -69,14 +83,8 @@ export class UserManagementComponent implements OnInit {
     if (userRoles[UserRole.ADMIN]) newRoles.push(UserRole.ADMIN);
     if (userRoles[UserRole.USER]) newRoles.push(UserRole.USER);
     
-    // Asegurar que el usuario tenga al menos un rol
-    if (newRoles.length === 0) {
-      this.error = 'El usuario debe tener al menos un rol';
-      // Restaurar el último rol (USER por defecto)
-      this.selectedRoles[user.id!][UserRole.USER] = true;
-      setTimeout(() => this.error = '', 3000);
-      return;
-    }
+    // Ya no obligamos a que tengan al menos un rol
+    // Un usuario sin rol USER está deshabilitado en el sistema
 
     this.authService.updateUserRoles(user.id!, newRoles).subscribe({
       next: (updatedUser) => {
@@ -86,7 +94,12 @@ export class UserManagementComponent implements OnInit {
           this.users[index] = updatedUser;
         }
         
-        this.message = `Roles actualizados para ${updatedUser.email}`;
+        let statusMsg = "";
+        if (!updatedUser.roles?.includes(UserRole.USER)) {
+          statusMsg = ` (Usuario deshabilitado)`;
+        }
+        
+        this.message = `Roles actualizados para ${updatedUser.username}${statusMsg}`;
         setTimeout(() => this.message = '', 3000);
       },
       error: (err) => {

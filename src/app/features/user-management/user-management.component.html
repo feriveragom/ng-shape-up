@@ -16,16 +16,20 @@
   <table class="users-table" *ngIf="!loading && users.length > 0">
     <thead>
       <tr>
-        <th>Nombre</th>
-        <th>Email</th>
+        <th>Username</th>
+        <th>Estado</th>
         <th>Roles</th>
         <th>Acciones</th>
       </tr>
     </thead>
     <tbody>
-      <tr *ngFor="let user of users">
-        <td>{{ user.name || 'Sin nombre' }}</td>
-        <td>{{ user.email }}</td>
+      <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
+        <td>{{ user.username }}</td>
+        <td>
+          <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
+            {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
+          </span>
+        </td>
         <td>
           <div class="role-badges">
             <span 
@@ -46,22 +50,23 @@
                   <input 
                     type="checkbox" 
                     [(ngModel)]="selectedRoles[user.id!][UserRole.ADMIN]"
-                    [disabled]="isFeriveragom(user)"
-                    [checked]="isFeriveragom(user) || selectedRoles[user.id!][UserRole.ADMIN]"
+                    [disabled]="isSuperAdmin(user)"
+                    [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
                     (change)="onRoleChange(user)"
                   />
                   Administrador
                 </label>
               </div>
-              <!-- El checkbox de Usuario solo se muestra si NO es feriveragom -->
-              <div class="checkbox-group" *ngIf="!isFeriveragom(user)">
+              <div class="checkbox-group">
                 <label>
                   <input 
                     type="checkbox"
                     [(ngModel)]="selectedRoles[user.id!][UserRole.USER]"
+                    [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
+                    [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.USER]"
                     (change)="onRoleChange(user)"
                   />
-                  Usuario
+                  Usuario (Habilitado)
                 </label>
               </div>
             </div>
