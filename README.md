@@ -884,6 +884,32 @@ Cada grupo tiene asociado un conjunto de permisos específicos:
 - Los roles (ADMIN/USER) determinan el acceso general a la aplicación.
 - Los grupos/permisos determinan capacidades específicas dentro del flujo de trabajo Shape Up.
 
+ -Flujo de funcionamiento
+    Permisos: Los permisos se crean primero en un catálogo central
+    Grupos: Los permisos se asignan a grupos según sus necesidades
+    Usuarios: Los grupos se asignan a usuarios
+    Acceso: El usuario hereda todos los permisos de sus grupos asignados
+    Este enfoque proporciona gran flexibilidad, ya que:
+    Un usuario puede pertenecer a múltiples grupos
+    Un grupo puede tener múltiples permisos
+    Los permisos se gestionan desde un único lugar
+    Implementación visual
+    La interfaz se divide en pestañas:
+    Roles: Gestión de roles básicos (ADMIN, USER)
+    Grupos: Asignación de grupos Shape Up a usuarios
+    Permisos: Gestión del catálogo de permisos
+    Asignar Permisos: Asignación de permisos a grupos
+    Los permisos asignados a cada grupo se muestran como tarjetas visuales elegantes que incluyen:
+    Nombre del permiso
+    ID del permiso (generado automáticamente)
+    Descripción del permiso
+    Protección de rutas
+    La implementación permite proteger rutas de tres formas:
+    Por rol: roleGuard([UserRole.ADMIN])
+    Por grupo: groupGuard([ShapeUpGroup.DESIGNER])
+    Por permiso: permissionGuard(['MANAGE_DOCUMENTATION'])
+    Esto proporciona una granularidad completa en el control de acceso.
+
 #### 4. Modelo de Datos
 
 ```typescript
