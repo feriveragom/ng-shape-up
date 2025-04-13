@@ -41,11 +41,8 @@ export class ForgotPasswordComponent {
     this.usernameValue = this.forgotForm.value.username;
     this.isDisabled = false;
 
-    console.log('Enviando solicitud para:', this.usernameValue);
-
     this.authService.forgotPassword({ username: this.usernameValue }).subscribe({
       next: (result) => {
-        console.log('Resultado:', result);
         this.usernameChecked = true;
         
         if (result) {

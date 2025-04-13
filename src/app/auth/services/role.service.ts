@@ -23,7 +23,6 @@ export class RoleService {
     
     // Suscribirse a los cambios en los permisos
     this.permissionService.permissions$.subscribe(permissions => {
-      console.log('RoleService: Actualizando permisos desde PermissionService', permissions);
       this.permissions = [...permissions];
       this.permissionsSubject.next(this.permissions);
     });
@@ -32,7 +31,6 @@ export class RoleService {
   private initializeDefaultPermissions(): void {
     // Cargar todos los permisos del PermissionService
     this.permissionService.getAllPermissions().subscribe(permissions => {
-      console.log('RoleService: Cargando permisos iniciales', permissions);
       this.permissions = [...permissions];
       this.permissionsSubject.next(this.permissions);
     });
@@ -242,15 +240,11 @@ export class RoleService {
       return throwError(() => new Error('Rol no encontrado'));
     }
     
-    console.log('RoleService: Actualizando permisos del rol', roleId);
-    console.log('RoleService: Permisos a asignar:', permissionIds);
-    
     // Primero, obtener la lista actual de permisos del PermissionService
     return this.permissionService.getAllPermissions().pipe(
       map(allPermissions => {
         // Filtrar los permisos que corresponden a los IDs proporcionados
         const updatedPermissions = allPermissions.filter(p => permissionIds.includes(p.id));
-        console.log('RoleService: Permisos encontrados en PermissionService:', updatedPermissions);
         
         // Crear una copia del array de roles
         const updatedRoles = [...this.roles];
@@ -272,12 +266,10 @@ export class RoleService {
           ...this.roles[roleIndex], 
           permissions: [...this.roles[roleIndex].permissions] 
         };
-        console.log('RoleService: Rol actualizado que se retorna:', updatedRole);
         
         return updatedRole;
       }),
-      delay(300),
-      tap(updatedRole => console.log('RoleService: Rol retornado después del delay:', updatedRole))
+      delay(300)
     );
   }
 } 

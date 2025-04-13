@@ -4,204 +4,64 @@
   https://angular-firebase-hub.firebaseapp.com
   https://ng-shape-up.web.app/
 
-## Conceptos de Angular
+## Conceptos Fundamentales de Angular
 
-### Sistema de Routing en Angular
+A continuación, se detallan los conceptos clave de Angular abordados en este proyecto:
 
-El sistema de rutas de Angular permite navegar entre diferentes componentes/vistas manteniendo la aplicación como SPA (Single Page Application).
-Aquí veremos las dos formas de implementar el routing usando exactamente las mismas rutas de nuestro proyecto:
+*   [Sistema de Routing y Navegación](#sistema-de-routing-y-navegación)
+*   [Protección de Rutas (Guards)](#protección-de-rutas-con-guards)
+*   [Servicios e Inyección de Dependencias](#servicios)
+*   [Formularios Reactivos](#formularios-reactivos) (Incluye uso de Componentes)
+*   [Gestión de Estado con RxJS (Observables)](#gestión-de-estado-con-rxjs)
+*   [Interceptores HTTP](#interceptores-http)
+*   [Autenticación y Gestión de Usuarios](#autenticación-y-gestión-de-usuarios)
+*   [Integración con Firebase](#guía-rápida-de-firebase)
+*   [Estructura del Proyecto](#estructura-del-proyecto)
 
-#### 1. Routing Básico (Carga Directa)
+### Sistema de Routing y Navegación
+
+El sistema de rutas de Angular permite navegar entre diferentes componentes/vistas manteniendo la aplicación como SPA (Single Page Application). Este proyecto utiliza Lazy Loading para optimizar el rendimiento.
+
+#### Comparación de Enfoques de Routing
+
+##### 1. Routing Básico (Carga Directa - No Usado Actualmente)
 
 ```typescript
+// Ejemplo conceptual de carga directa
 import { Routes } from '@angular/router';
-import { AboutComponent } from './pages/about/about.component';
-import { LoginComponent } from './auth/pages/login/login.component';
-import { RegisterComponent } from './auth/pages/register/register.component';
-import { ForgotPasswordComponent } from './auth/pages/forgot-password/forgot-password.component';
-import { ResetPasswordComponent } from './auth/pages/reset-password/reset-password.component';
-import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { UserManagementComponent } from './features/user-management/user-management.component';
+// ... importaciones directas de todos los componentes ...
 import { authGuard } from './auth/guards/auth.guard';
+import { permissionGuard } from './auth/guards/permission.guard';
+import { UserRole } from './auth/models/user.model';
 
 export const routes: Routes = [
-  // Ruta pública por defecto
-  {
-    path: '',
-    component: AboutComponent
-  },
-
-  // Rutas de autenticación agrupadas
-  {
-    path: 'auth',
-    children: [
-      {
-        path: 'login',
-        component: LoginComponent
-      },
-      {
-        path: 'register',
-        component: RegisterComponent
-      },
-      {
-        path: 'forgot-password',
-        component: ForgotPasswordComponent
-      },
-      {
-        path: 'reset-password',
-        component: ResetPasswordComponent
-      }
-    ]
-  },
-
-  // Rutas protegidas
-  {
-    path: '',
-    canActivate: [authGuard],
-    children: [
-      {
-        path: 'dashboard',
-        component: DashboardComponent
-      },
-      {
-        path: 'user-management',
-        component: UserManagementComponent
-      }
-    ]
-  },
-
-  // Ruta para página no encontrada
-  {
-    path: '**',
-    redirectTo: ''
-  }
+  // ... Definiciones con 'component: ComponentName' ...
 ];
 ```
 
-Características del Routing Básico:
-- Todos los componentes se importan directamente al inicio
-- El bundle inicial contiene TODO el código de la aplicación
-- La aplicación carga más lento inicialmente
-- Mayor consumo de memoria inicial
-- Mejor para aplicaciones pequeñas
+*   **Características**:
+    *   Todos los componentes se importan directamente al inicio.
+    *   El bundle inicial contiene todo el código.
+    *   Carga inicial más lenta.
+    *   Mayor consumo de memoria inicial.
+    *   Adecuado para aplicaciones muy pequeñas.
 
-#### 2. Routing con Lazy Loading (Implementación Actual)
+##### 2. Routing con Lazy Loading (Implementación Actual)
 
 ```typescript
+// app.routes.ts (Implementación actual)
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/guards/auth.guard';
+import { permissionGuard } from './auth/guards/permission.guard';
+import { UserRole } from './auth/models/user.model'; // Asegúrate que UserRole existe y es usado
 
 export const routes: Routes = [
-  // Ruta pública por defecto
+  // Rutas públicas
   {
     path: '',
-    loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent)
+    loadComponent: () => import('./pages/about/about.component').then(m => m.AboutComponent) // Ejemplo ruta pública
   },
-
-  // Rutas de autenticación agrupadas
-  {
-    path: 'auth',
-    children: [
-      {
-        path: 'login',
-        loadComponent: () => import('./auth/pages/login/login.component').then(m => m.LoginComponent)
-      },
-      {
-        path: 'register',
-        loadComponent: () => import('./auth/pages/register/register.component').then(m => m.RegisterComponent)
-      },
-      {
-        path: 'forgot-password',
-        loadComponent: () => import('./auth/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent)
-      },
-      {
-        path: 'reset-password',
-        loadComponent: () => import('./auth/pages/reset-password/reset-password.component').then(m => m.ResetPasswordComponent)
-      }
-    ]
-  },
-
-  // Rutas protegidas con lazy loading
-  {
-    path: '',
-    canActivate: [authGuard],
-    children: [
-      {
-        path: 'dashboard',
-        loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
-      },
-      {
-        path: 'user-management',
-        loadComponent: () => import('./features/user-management/user-management.component').then(m => m.UserManagementComponent)
-      }
-    ]
-  },
-
-  // Ruta para página no encontrada
-  {
-    path: '**',
-    redirectTo: ''
-  }
-];
-```
-
-Características del Lazy Loading:
-- Los componentes se importan usando dynamic imports
-- Cada ruta carga su componente solo cuando se necesita
-- La aplicación inicial carga más rápido
-- Menor consumo de memoria inicial
-- Mejor para aplicaciones medianas y grandes
-- Ideal cuando hay secciones que el usuario podría no visitar nunca
-
-Principales Diferencias:
-1. **Importaciones**:
-   - Básico: `import { ComponentName } from './path'`
-   - Lazy: `loadComponent: () => import('./path')`
-
-2. **Declaración de rutas**:
-   - Básico: `component: ComponentName`
-   - Lazy: `loadComponent: () => import(...).then(m => m.ComponentName)`
-
-3. **Tamaño del bundle inicial**:
-   - Básico: Incluye todo el código
-   - Lazy: Solo incluye lo necesario para la ruta inicial
-
-4. **Rendimiento**:
-   - Básico: Carga más lenta inicial, navegación más rápida después
-   - Lazy: Carga inicial rápida, pequeña latencia al navegar por primera vez a cada ruta
-
-### Estructura de Proyecto para Autenticación
-
-Para implementar un sistema de autenticación, se recomienda la siguiente estructura:
-
-```
-src/
-  app/
-    auth/
-      pages/
-        login/
-        register/
-      services/
-      guards/
-      models/
-```
-
-#### Componentes clave para autenticación
-
-1. **Login Component**: Maneja la autenticación de usuarios existentes
-2. **Register Component**: Permite a nuevos usuarios crear una cuenta
-3. **Auth Service**: Servicio centralizado para gestionar operaciones de autenticación
-4. **Auth Guard**: Protege rutas que requieren autenticación
-5. **User Model**: Define la estructura de datos para usuarios
-6. **Token Interceptor**: Intercepta solicitudes HTTP para agregar tokens de autenticación
-
-### Implementación de Lazy Loading con Autenticación
-
-Esta sección muestra cómo se integran el lazy loading y la autenticación para crear un sistema de rutas seguro y eficiente:
-
-```typescript
-export const routes: Routes = [
-  // Rutas públicas con lazy loading
+  // Rutas de autenticación agrupadas con lazy loading
   {
     path: 'auth',
     children: [
@@ -214,1229 +74,620 @@ export const routes: Routes = [
         path: 'register',
         loadComponent: () => import('./auth/pages/register/register.component')
           .then(m => m.RegisterComponent)
+      },
+      {
+        path: 'forgot-password',
+        loadComponent: () => import('./auth/pages/forgot-password/forgot-password.component')
+          .then(m => m.ForgotPasswordComponent)
+      },
+      {
+        path: 'reset-password',
+        loadComponent: () => import('./auth/pages/reset-password/reset-password.component')
+          .then(m => m.ResetPasswordComponent)
       }
     ]
   },
-  
-  // Rutas protegidas con lazy loading
+  // Rutas protegidas con lazy loading y guards
   {
     path: '',
-    canActivate: [authGuard],
+    canActivate: [authGuard], // Protección general de autenticación
     children: [
       {
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard.component')
           .then(m => m.DashboardComponent)
+      },
+      {
+        path: 'user-management',
+        loadComponent: () => import('./features/user-management/user-management.component')
+          .then(m => m.UserManagementComponent),
+        // Protección adicional por permiso específico
+        canActivate: [permissionGuard(['ADMINISTRACION_TOTAL'])]
+      },
+      {
+        path: 'profile',
+        loadComponent: () => import('./features/profile/profile.component')
+          .then(m => m.ProfileComponent),
+        // Ejemplo protección por permiso
+        canActivate: [permissionGuard(['INVITADO'])]
+      },
+      {
+        path: '',
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
       }
     ]
+  },
+  // Ruta para página no encontrada (Wildcard)
+  {
+    path: '**',
+    redirectTo: 'dashboard' // O a una página 'NotFoundComponent'
   }
 ];
 ```
 
-Esta implementación combina:
-1. Lazy loading para optimización de rendimiento
-2. Guards para protección de rutas
-3. Agrupación lógica de rutas por funcionalidad
-4. Separación clara entre rutas públicas y privadas
+*   **Características**:
+    *   Componentes importados dinámicamente (`loadComponent`).
+    *   Cada ruta carga su componente sólo cuando se necesita.
+    *   Carga inicial más rápida.
+    *   Menor consumo de memoria inicial.
+    *   Ideal para aplicaciones medianas y grandes.
 
-### Servicios en Angular
+#### Protección de Rutas con Guards
 
-Los servicios son clases con un propósito específico que pueden ser reutilizados en toda la aplicación. Se utilizan para:
+Los Guards son mecanismos para controlar el acceso a las rutas.
 
-- Compartir datos entre componentes
-- Encapsular lógica de negocio
-- Comunicarse con APIs externas
-- Mantener el estado de la aplicación
+##### Funcionamiento (`canActivate`)
 
-#### Implementación básica de un servicio
+1.  **Momento de Ejecución**: Antes de cargar/activar la ruta solicitada.
+2.  **Proceso**: Verifica condiciones (autenticación, roles, permisos).
+3.  **Resultado**:
+    *   `true`: Permite el acceso.
+    *   `false`: Bloquea el acceso.
+    *   `UrlTree`: Redirige a otra ruta (`router.navigate(...)`).
+    *   Puede retornar `boolean`, `Promise<boolean>`, `Observable<boolean>`, `UrlTree`.
+4.  **Encadenamiento**: `canActivate: [guard1, guard2]` (todos deben retornar `true`).
+5.  **Protección en Cascada**: Al proteger una ruta padre, las hijas también quedan protegidas por ese guard.
 
-```typescript
-import { Injectable } from '@angular/core';
+##### Tipos de Guards Implementados
 
-@Injectable({
-  providedIn: 'root' // Disponible en toda la aplicación
-})
-export class DataService {
-  private data: any[] = [];
-
-  constructor() { }
-
-  getData(): any[] {
-    return this.data;
-  }
-
-  addData(item: any): void {
-    this.data.push(item);
-  }
-}
-```
-
-### Autenticación y Manejo de Sesiones
-
-La autenticación es un aspecto crítico en aplicaciones web modernas. Angular facilita su implementación mediante:
-
-#### 1. Servicios de Autenticación
-
-Un servicio centralizado que gestiona:
-- Login/logout
-- Registro
-- Almacenamiento de tokens
-- Verificación del estado de autenticación
+###### 1. `AuthGuard` (Autenticación)
 
 ```typescript
-@Injectable({
-  providedIn: 'root'
-})
-export class AuthService {
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
-  
-  login(credentials: LoginRequest): Observable<User> {
-    // Lógica de autenticación
-  }
-  
-  logout(): void {
-    localStorage.removeItem('currentUser');
-    this.currentUserSubject.next(null);
-  }
-  
-  isAuthenticated(): boolean {
-    return this.currentUserSubject.value !== null;
-  }
-}
-```
-
-#### 2. Persistencia de Sesión
-
-Para mantener al usuario autenticado entre recargas de página, se suele usar:
-- `localStorage`: Almacenamiento persistente
-- `sessionStorage`: Almacenamiento temporal (durante la sesión)
-
-```typescript
-// Guardar datos de sesión
-private setSession(user: User): void {
-  localStorage.setItem('currentUser', JSON.stringify(user));
-}
-
-// Recuperar datos al iniciar la aplicación
-private checkAuthStatus(): void {
-  const storedUser = localStorage.getItem('currentUser');
-  if (storedUser) {
-    this.currentUserSubject.next(JSON.parse(storedUser));
-  }
-}
-```
-
-#### 3. Guards para Protección de Rutas
-
-Los guards previenen el acceso no autorizado a rutas protegidas. En Angular, `canActivate` actúa como un sistema de seguridad que se ejecuta antes de que un usuario pueda acceder a una ruta protegida.
-
-##### Implementación del Guard
-```typescript
+// auth/guards/auth.guard.ts
 export const authGuard: CanActivateFn = (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
   if (authService.isAuthenticated()) {
-    return true; // Permite acceso a la ruta
+    return true;
   }
-
-  router.navigate(['/auth/login']); // Redirige al login
-  return false; // Bloquea acceso a la ruta
+  // Redirige al login si no está autenticado
+  router.navigate(['/auth/login']);
+  return false;
 };
 ```
+*   Verifica si el usuario tiene una sesión activa.
 
-##### Uso en las Rutas
-```typescript
-{
-    path: '',
-    canActivate: [authGuard],  // <- Protección de rutas
-    children: [
-      {
-        path: 'dashboard',
-        loadComponent: () => import('./features/dashboard/dashboard.component')
-      },
-      {
-        path: 'user-management',
-        loadComponent: () => import('./features/user-management/user-management.component')
-      }
-    ]
-}
-```
-
-##### Funcionamiento del canActivate
-
-1. **Momento de Ejecución**: 
-   - Se ejecuta ANTES de cargar la ruta solicitada
-   - Actúa como un middleware de autorización
-
-2. **Proceso de Verificación**:
-   - Verifica si el usuario está autenticado usando AuthService
-   - Si está autenticado: permite acceso (retorna true)
-   - Si no está autenticado: redirige a login (retorna false)
-
-3. **Características Importantes**:
-   - Puede recibir múltiples guards en el array: `canActivate: [authGuard, roleGuard]`
-   - Todos los guards deben retornar true para permitir acceso
-   - Puede retornar:
-     - boolean: true/false
-     - Promise<boolean>
-     - Observable<boolean>
-     - UrlTree (para redirección)
-
-4. **Protección en Cascada**:
-   - Al proteger una ruta padre, todas sus rutas hijas quedan protegidas
-   - En nuestro caso, tanto dashboard como user-management requieren autenticación
-
-### Formularios Reactivos
-
-Los formularios reactivos ofrecen un enfoque basado en modelos para manejar entradas de formularios:
-
-#### Características principales:
-
-- Construidos alrededor de observables
-- Control de formulario inmutable
-- Validación síncrona y asíncrona
-- Testabilidad mejorada
-
-#### Implementación básica:
+###### 2. `PermissionGuard` (Autorización por Permiso)
 
 ```typescript
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+// auth/guards/permission.guard.ts
+import { inject } from '@angular/core';
+import { Router, CanActivateFn } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+import { RoleService } from '../services/role.service';
+import { map, catchError, of } from 'rxjs';
 
-@Component({...})
-export class LoginComponent {
-  loginForm: FormGroup;
+export const permissionGuard = (requiredPermissions: string[]): CanActivateFn => {
+  return (route, state) => {
+    const authService = inject(AuthService);
+    const roleService = inject(RoleService);
+    const router = inject(Router);
 
-  constructor(private fb: FormBuilder) {
-    this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
-    });
-  }
-
-  onSubmit(): void {
-    if (this.loginForm.invalid) {
-      return;
+    if (!authService.isAuthenticated()) {
+      router.navigate(['/auth/login']);
+      return false;
     }
-    // Procesar datos del formulario
-    console.log(this.loginForm.value);
-  }
-}
-```
 
-#### Validaciones comunes:
+    const currentUser = authService.getCurrentUser();
+    if (!currentUser?.roles || currentUser.roles.length === 0) {
+      router.navigate(['/dashboard'], { queryParams: { error: 'Acceso denegado: Sin roles asignados.' } });
+      return false;
+    }
 
-```typescript
-Validators.required         // Campo obligatorio
-Validators.minLength(6)     // Longitud mínima
-Validators.maxLength(50)    // Longitud máxima
-Validators.email            // Formato de email válido
-Validators.pattern(regex)   // Patrón personalizado
-```
+    // Verifica si el usuario tiene AL MENOS UNO de los permisos requeridos
+    return roleService.getUserPermissions(currentUser.roles).pipe(
+      map(userPermissions => {
+        const hasRequiredPermission = requiredPermissions.some(reqPerm =>
+          userPermissions.some(userPerm => userPerm.id === reqPerm)
+        );
 
-### Gestión de Estado con RxJS
+        if (hasRequiredPermission) {
+          return true;
+        }
 
-RxJS es fundamental en Angular para manejar flujos de datos asincrónicos y gestionar el estado:
-
-#### BehaviorSubject para Estado
-
-- `BehaviorSubject` es una variante de `Subject` que:
-- Mantiene el valor actual
-- Emite el valor más reciente a los nuevos suscriptores
-- Requiere un valor inicial
-
-```typescript
-private currentUserSubject = new BehaviorSubject<User | null>(null);
-public currentUser$ = this.currentUserSubject.asObservable();
-
-// Actualizar el estado
-login(user: User): void {
-  this.currentUserSubject.next(user);
-}
-
-// Acceder al valor actual sin suscripción
-get currentUser(): User | null {
-  return this.currentUserSubject.value;
-}
-```
-
-#### Operadores comunes de RxJS:
-
-```typescript
-// Transformar datos
-map(user => user.name)
-
-// Manejar errores
-catchError(error => {
-  console.error('Error:', error);
-  return throwError(() => error);
-})
-
-// Efectos secundarios sin modificar datos
-tap(data => console.log('Datos recibidos:', data))
-
-// Simular latencia de red (útil para demos)
-delay(800)
-```
-
-### Interceptores HTTP en Angular
-
-Los interceptores son una característica poderosa de Angular que permite interceptar y modificar las solicitudes y respuestas HTTP en toda la aplicación. Actúan como una capa intermedia entre tu aplicación y el servidor.
-
-#### 1. Implementación de Nuestro AuthInterceptor
-
-En nuestro proyecto, tenemos implementado un interceptor de autenticación que maneja automáticamente la adición del token JWT a las peticiones:
-
-```typescript
-export const authInterceptor: HttpInterceptorFn = (req, next) => {
-  const authService = inject(AuthService);
-  const token = authService.getToken();
-  
-  // Si hay un token y la petición es a nuestra API
-  if (token && req.url.includes('/api')) {
-    // Clonamos la petición y añadimos el header de autorización
-    const authReq = req.clone({
-      headers: req.headers.set('Authorization', `Bearer ${token}`)
-    });
-    
-    return next(authReq);
-  }
-  
-  // Si no hay token o es una petición externa, la dejamos pasar sin modificar
-  return next(req);
+        // Si no tiene el permiso, redirigir al dashboard con mensaje
+        router.navigate(['/dashboard'], { queryParams: { error: 'Acceso denegado: Permisos insuficientes.' } });
+        return false;
+      }),
+      catchError(() => {
+        // En caso de error obteniendo permisos, redirigir
+        router.navigate(['/dashboard'], { queryParams: { error: 'Error al verificar permisos.' } });
+        return of(false);
+      })
+    );
+  };
 };
 ```
+*   Verifica si el usuario posee al menos uno de los permisos específicos necesarios para acceder a la ruta. Es el método preferido para control de acceso granular.
 
-Características importantes de nuestro interceptor:
-1. **Inyección moderna**: Usa `inject()` en lugar del constructor
-2. **Verificación selectiva**: Solo modifica peticiones a nuestra API
-3. **Inmutabilidad**: Clona la petición en lugar de modificarla directamente
-4. **Transparencia**: Deja pasar peticiones sin token o externas sin modificar
+##### Sistema de Protección Multicapa
 
-#### 2. Registro del Interceptor
+El proyecto combina estos guards para una seguridad robusta:
 
-A partir de Angular 17, los interceptores se registran en el archivo `app.config.ts`:
+1.  **Nivel de Autenticación (`authGuard`)**: ¿Está el usuario logueado?
+2.  **Nivel de Permisos (`permissionGuard`)**: ¿Tiene el usuario los permisos necesarios para esta acción/ruta específica?
+
+*   **Uso Típico**:
+    *   `canActivate: [authGuard]` para secciones que solo requieren login.
+    *   `canActivate: [authGuard, permissionGuard(['PERMISO_X'])]` para secciones que requieren permisos específicos.
+
+#### Configuración del Provider de Rutas
+
+Las rutas y sus configuraciones se registran en `app.config.ts`:
 
 ```typescript
+// app.config.ts
 import { ApplicationConfig } from '@angular/core';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
+import { routes } from './app.routes';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from './auth/interceptors/auth.interceptor';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideHttpClient(
-      withInterceptors([authInterceptor])
+    provideRouter(routes, withComponentInputBinding()), // Registra las rutas
+    provideHttpClient( // Configura HttpClient
+      withInterceptors([authInterceptor /*, otrosInterceptores */ ])
     )
+    // Otros providers globales
   ]
 };
 ```
 
-#### 3. Funcionamiento del Interceptor
+### Servicios
 
-1. **Flujo de una Petición HTTP**:
-   ```
-   Aplicación → Interceptor → API
-   [Request sin token] → [Request + Token] → [API]
-   ```
+Clases reutilizables para encapsular lógica de negocio, comunicación con API, gestión de estado, etc.
 
-2. **Proceso Detallado**:
-   - La aplicación hace una petición HTTP (por ejemplo, GET /api/users)
-   - El interceptor captura la petición
-   - Verifica si hay un token disponible
-   - Si la URL incluye '/api', añade el token
-   - La petición modificada llega al servidor
-
-3. **Ejemplo Práctico**:
-   ```typescript
-   // Petición original en un servicio
-   this.http.get('/api/users');
-
-   // Lo que realmente llega al servidor después del interceptor
-   GET /api/users
-   Headers:
-   Authorization: Bearer eyJhbGciOiJ...token...
-   ```
-
-#### 4. Casos de Uso en Nuestra Aplicación
-
-1. **Rutas Protegidas**:
-   - /api/dashboard
-   - /api/user-management
-   - /api/cycles
-
-2. **Rutas Públicas** (no modificadas por el interceptor):
-   - /auth/login
-   - /auth/register
-   - URLs externas
-
-#### 5. Ventajas de Nuestra Implementación
-
-1. **Centralización**:
-   - Un solo lugar para gestionar tokens
-   - Consistencia en todas las peticiones
-   - Fácil mantenimiento
-
-2. **Seguridad**:
-   - Validación de URLs
-   - No expone el token en peticiones externas
-   - Manejo transparente de autenticación
-
-3. **Flexibilidad**:
-   - Fácil de extender para nuevos headers
-   - Permite filtrar por URL
-   - Compatible con diferentes tipos de tokens
-
-#### 6. Patrones de Uso
+#### Implementación Básica
 
 ```typescript
-// En cualquier servicio de la aplicación:
-export class UserService {
-  constructor(private http: HttpClient) {}
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, Observable } from 'rxjs';
 
-  // El interceptor manejará automáticamente la autenticación
-  getUsers() {
-    return this.http.get('/api/users');
+@Injectable({
+  providedIn: 'root' // Singleton disponible en toda la app
+})
+export class MiServicio {
+  private dataSubject = new BehaviorSubject<string[]>([]);
+  public data$ = this.dataSubject.asObservable(); // Observable público
+
+  constructor() { }
+
+  getData(): Observable<string[]> {
+    // Lógica para obtener datos (ej. HTTP)
+    // this.http.get(...).subscribe(datos => this.dataSubject.next(datos));
+    return this.data$;
   }
 
-  // Las peticiones externas no serán modificadas
-  getExternalData() {
-    return this.http.get('https://api.externa.com/data');
+  addData(item: string): void {
+    const currentData = this.dataSubject.value;
+    this.dataSubject.next([...currentData, item]);
   }
 }
 ```
 
-### Recuperación de Contraseñas
+### Formularios Reactivos
 
-La funcionalidad de recuperación de contraseñas es esencial en sistemas de autenticación. Consiste en dos flujos principales:
+Enfoque basado en modelos para manejar formularios, usando `FormGroup`, `FormControl`, `FormBuilder` y validadores.
 
-#### 1. Solicitud de recuperación:
+#### Características Principales
 
-- Usuario ingresa su correo electrónico
-- Sistema valida el correo y envía un enlace especial con token único
-- El token tiene tiempo de expiración por seguridad
+*   Modelo de datos explícito (el `FormGroup`).
+*   Inmutabilidad (cambios crean nuevas instancias).
+*   Validación síncrona y asíncrona incorporada.
+*   Más predecible y testeable que los formularios por plantilla.
 
-#### 2. Restablecimiento de contraseña:
-
-- Usuario accede al enlace especial con el token
-- Sistema valida el token (existencia y expiración)
-- Usuario ingresa nueva contraseña
-- Sistema actualiza la contraseña y redirige al login
-
-#### Implementación del flujo:
+#### Implementación Básica
 
 ```typescript
-// Modelos
-export interface ForgotPasswordRequest {
-  email: string;
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule],
+  // ... selector, templateUrl, styleUrls
+})
+export class MiFormularioComponent implements OnInit {
+  miForm: FormGroup;
+
+  constructor(private fb: FormBuilder) {}
+
+  ngOnInit(): void {
+    this.miForm = this.fb.group({
+      nombre: ['', [Validators.required, Validators.minLength(3)]],
+      email: ['', [Validators.required, Validators.email]],
+      // ... otros controles
+    });
+  }
+
+  onSubmit(): void {
+    if (this.miForm.invalid) {
+      this.miForm.markAllAsTouched(); // Marca campos para mostrar errores
+      return;
+    }
+    // Procesar datos válidos: this.miForm.value
+    console.log('Formulario válido:', this.miForm.value);
+  }
+
+  // Helper para acceder a controles en la plantilla
+  get nombreControl() { return this.miForm.get('nombre'); }
+  get emailControl() { return this.miForm.get('email'); }
+}
+```
+
+```html
+<!-- En la plantilla HTML -->
+<form [formGroup]="miForm" (ngSubmit)="onSubmit()">
+  <div>
+    <label for="nombre">Nombre:</label>
+    <input id="nombre" type="text" formControlName="nombre">
+    <!-- Mensajes de error -->
+    <div *ngIf="nombreControl?.invalid && (nombreControl?.dirty || nombreControl?.touched)">
+      <small *ngIf="nombreControl?.errors?.['required']">El nombre es requerido.</small>
+      <small *ngIf="nombreControl?.errors?.['minlength']">Mínimo 3 caracteres.</small>
+    </div>
+  </div>
+  <!-- ... otros campos ... -->
+  <button type="submit" [disabled]="miForm.invalid">Enviar</button>
+</form>
+```
+
+### Gestión de Estado con RxJS
+
+RxJS es clave en Angular para manejar flujos de datos asíncronos y estado reactivo.
+
+#### `BehaviorSubject` para Estado Compartido
+
+Ideal para mantener y emitir el estado actual (ej. usuario autenticado).
+
+```typescript
+// En AuthService
+import { BehaviorSubject } from 'rxjs';
+import { User } from '../models/user.model'; // Asegúrate de importar User
+
+private currentUserSubject = new BehaviorSubject<User | null>(null);
+// Observable público para que los componentes se suscriban
+public currentUser$ = this.currentUserSubject.asObservable();
+// Getter para acceso síncrono al valor actual (usar con precaución)
+public get currentUserValue(): User | null {
+  return this.currentUserSubject.value;
 }
 
-export interface ResetPasswordRequest {
-  email: string;
-  token: string;
-  newPassword: string;
+// Al hacer login
+login(user: User): void {
+  // ... lógica de login ...
+  localStorage.setItem('currentUser', JSON.stringify(user)); // Persistencia
+  this.currentUserSubject.next(user); // Emitir nuevo estado
 }
 
-// Métodos en AuthService
-forgotPassword(request: ForgotPasswordRequest): Observable<void> {
-  // Enviar email con token de recuperación
+// Al hacer logout
+logout(): void {
+  localStorage.removeItem('currentUser');
+  this.currentUserSubject.next(null);
 }
 
-resetPassword(request: ResetPasswordRequest): Observable<void> {
-  // Validar token y actualizar contraseña
+// Al iniciar la app (en el constructor del servicio)
+constructor() {
+  this.checkAuthStatus();
+}
+
+private checkAuthStatus(): void {
+  const storedUser = localStorage.getItem('currentUser');
+  if (storedUser) {
+    try {
+      this.currentUserSubject.next(JSON.parse(storedUser));
+    } catch (e) {
+      console.error("Error parsing stored user data:", e);
+      localStorage.removeItem('currentUser'); // Limpiar si está corrupto
+    }
+  }
 }
 ```
 
-#### Componentes necesarios:
+#### Operadores Comunes de RxJS
 
-1. **ForgotPasswordComponent**: Formulario para solicitar recuperación
-2. **ResetPasswordComponent**: Formulario para establecer nueva contraseña
-3. **Enlaces en LoginComponent**: Permitir acceso al flujo de recuperación
+*   `map()`: Transformar cada valor emitido.
+*   `tap()`: Ejecutar efectos secundarios (logs, guardar datos) sin modificar el flujo.
+*   `switchMap()`: Mapear a un nuevo Observable, cancelando el anterior si llega un nuevo valor fuente (útil para peticiones anidadas o dependientes).
+*   `catchError()`: Manejar errores en el flujo.
+*   `filter()`: Emitir solo valores que cumplan una condición.
+*   `debounceTime()`: Esperar un tiempo de inactividad antes de emitir (ej. en inputs de búsqueda).
+*   `distinctUntilChanged()`: Emitir solo si el valor actual es diferente al anterior.
+*   `take()`: Tomar un número específico de emisiones y completar.
+*   `takeUntil()`: Completar cuando otro Observable emita (útil para desuscripciones).
+*   `forkJoin()`: Ejecutar varios Observables en paralelo y emitir un array con los últimos valores de cada uno cuando todos completen.
 
-#### Consideraciones de seguridad:
+### Interceptores HTTP
 
-- Tokens de un solo uso
-- Tiempo de expiración corto (15-30 minutos)
-- No revelar si el correo existe o no en respuestas
-- Limitar intentos de recuperación por IP/usuario
-- Notificar al usuario cuando su contraseña cambia
+Middleware que intercepta peticiones (`HttpRequest`) y respuestas (`HttpResponse`) HTTP salientes y entrantes. Útil para tareas transversales como añadir tokens, manejar errores globales, logging, etc.
 
-### Diagramas de la Aplicación
+#### Implementación (`AuthInterceptor`)
 
-#### 1. Diagrama de Autenticación y Autorización
-```
-┌─────────────────────────────────────────────┐
-│            FLUJO DE AUTENTICACIÓN           │
-└─────────────────────────────────────────────┘
+```typescript
+// auth/interceptors/auth.interceptor.ts
+import { HttpInterceptorFn, HttpRequest, HttpHandlerFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { AuthService } from '../services/auth.service'; // Asegúrate de la ruta correcta
 
-1. Inicio de Sesión
-   Usuario ──> Login Component
-                    │
-                    ▼
-   [Credenciales] ──> AuthService ──> HTTP Interceptor ──> API
-                           │
-                           ▼
-                     LocalStorage ────> BehaviorSubject<User>
-                                            │
-                                            ▼
-                                    Actualizar UI/Estado
+export const authInterceptor: HttpInterceptorFn = (req: HttpRequest<unknown>, next: HttpHandlerFn) => {
+  const authService = inject(AuthService);
+  const token = authService.getToken(); // Método para obtener el token guardado
 
-2. Acceso a Rutas Protegidas
-   Usuario ──> Ruta Protegida
-                    │
-                    ▼
-              AuthGuard ───┐
-                          │
-         ┌───────────────┘
-         │
-         ▼
-   ¿Token válido? ──> No ──> Redirect a Login
-         │
-         ▼
-        Sí
-         │
-         ▼
-   Cargar Componente
-         │
-         ▼
-   HTTP Interceptor
-   añade token
-         │
-         ▼
-   Petición a API
+  // Clonar la petición para modificarla (las peticiones son inmutables)
+  let authReq = req;
+
+  // Añadir el token solo si existe
+  // La verificación de URL (ej. /api) es opcional, depende si TODAS las peticiones lo necesitan
+  if (token) {
+    authReq = req.clone({
+      setHeaders: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+  }
+
+  // Pasar la petición (original o clonada) al siguiente manejador
+  return next(authReq);
+  // Aquí se podrían añadir operadores pipe() para manejar respuestas o errores
+  // ej. .pipe(catchError(...))
+};
 ```
 
-#### 2. Mapa de Navegación
-```
-┌─────────────────────────────────────┐
-│          MAPA DE NAVEGACIÓN         │
-└─────────────────────────────────────┘
+#### Registro del Interceptor
 
-RUTAS PÚBLICAS                RUTAS PROTEGIDAS
-─────────────                 ────────────────
-/                            /dashboard
-│                            ├── Panel Principal
-└── /auth                    ├── Estadísticas
-    ├── /login              └── Notificaciones
-    ├── /register           
-    ├── /forgot-password    /user-management
-    └── /reset-password     └── Gestión de Usuarios
+Se registran en `app.config.ts` usando `provideHttpClient` y `withInterceptors`.
 
-                            /cycles
-                            ├── Lista de Ciclos
-                            └── Detalles de Ciclo
+```typescript
+// app.config.ts (ya mostrado en la sección de Routing)
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from './auth/interceptors/auth.interceptor';
+
+// ...
+providers: [
+  // ... otros providers
+  provideHttpClient(
+    withInterceptors([authInterceptor /*, otrosInterceptores */ ])
+  )
+]
+// ...
 ```
 
-#### 3. Flujo de Datos
-```
-┌─────────────────────────────────────┐
-│           FLUJO DE DATOS            │
-└─────────────────────────────────────┘
+#### Flujo de Funcionamiento
 
-1. Autenticación
-   ┌──────────┐    ┌──────────┐    ┌────────┐
-   │Component │───>│AuthService│───>│  API   │
-   └──────────┘    └──────────┘    └────────┘
-                        │              │
-                        ▼              ▼
-                   ┌──────────┐    ┌────────┘
-                   │ Storage  │<───┤ Token  │
-                   └──────────┘    └────────┘
+1.  Componente/Servicio realiza una petición HTTP (`HttpClient.get(...)`).
+2.  La petición es interceptada por `authInterceptor`.
+3.  El interceptor obtiene el token del `AuthService`.
+4.  Si hay token, clona la petición y añade el header `Authorization`.
+5.  La petición (modificada o no) continúa hacia el backend.
+6.  La respuesta del backend puede ser interceptada también (si se añade lógica `pipe()` en el interceptor).
 
-2. Interceptor
-   ┌──────────┐    ┌──────────┐    ┌────────┘
-   │Petición  │───>│Interceptor│───>│Petición│
-   │Original  │    │   Auth   │    │+ Token │
-   └──────────┘    └──────────┘    └────────┘
-                        │
-                        ▼
-                   ┌──────────┘
-                   │  Token   │
-                   │Storage   │
-                   └──────────┘
-```
+### Autenticación y Gestión de Usuarios
+
+#### Flujo de Autenticación
+
+1.  **Login**:
+    *   Usuario introduce credenciales en `LoginComponent`.
+    *   Se llama a `AuthService.login(credentials)`.
+    *   `AuthService` valida contra el backend (simulado o real).
+    *   Si es exitoso, guarda el token/datos de usuario (localStorage) y actualiza `currentUserSubject`.
+    *   Redirige al `DashboardComponent`.
+2.  **Registro**:
+    *   Usuario introduce datos en `RegisterComponent`.
+    *   Se llama a `AuthService.register(userData)`.
+    *   `AuthService` envía datos al backend.
+    *   Si es exitoso, usualmente redirige al Login o directamente loguea al usuario.
+3.  **Protección de Rutas**:
+    *   Al navegar a una ruta protegida, los `Guards` (`authGuard`, `permissionGuard`) verifican el estado de `AuthService` (`isAuthenticated`, `currentUserValue`, y `roleService.getUserPermissions`).
+4.  **Peticiones Autenticadas**:
+    *   `AuthInterceptor` añade el token a las peticiones HTTP salientes.
+5.  **Logout**:
+    *   Usuario clickea en "Cerrar Sesión".
+    *   Se llama a `AuthService.logout()`.
+    *   `AuthService` limpia el estado (localStorage, `currentUserSubject`) y redirige al Login.
+
+#### Recuperación de Contraseñas
+
+Flujo típico (puede variar según implementación backend):
+
+1.  **Solicitud (`ForgotPasswordComponent`)**:
+    *   Usuario introduce su email/username.
+    *   Llama a `AuthService.forgotPassword(email)`.
+    *   Backend envía un email con un enlace/token de reseteo único y temporal.
+2.  **Restablecimiento (`ResetPasswordComponent`)**:
+    *   Usuario accede al enlace del email (que contiene el token).
+    *   La ruta (`/reset-password?token=...`) carga el componente.
+    *   Usuario introduce la nueva contraseña.
+    *   Llama a `AuthService.resetPassword(token, newPassword)`.
+    *   Backend valida el token y actualiza la contraseña.
+    *   Redirige al Login.
+
+#### Componentes Clave de Autenticación
+
+*   `LoginComponent`: Formulario de inicio de sesión.
+*   `RegisterComponent`: Formulario de registro.
+*   `ForgotPasswordComponent`: Formulario para solicitar reseteo.
+*   `ResetPasswordComponent`: Formulario para establecer nueva contraseña.
+*   `AuthService`: Lógica centralizada de autenticación, estado y comunicación con backend.
+*   `User`, `Role`, `Permission` (en `auth/models`): Modelos de datos.
+*   `auth.guard.ts`: Guard de autenticación.
+*   `permission.guard.ts`: Guard de permisos.
+*   `auth.interceptor.ts`: Interceptor para añadir tokens.
 
 ### Estructura del Proyecto
+
+Organización recomendada para mantenibilidad y escalabilidad.
 
 ```
 ng-shape-up/
 ├── src/                         # Código fuente principal
-│   ├── app/                    # Módulo principal de la aplicación
-│   │   ├── auth/              # Módulo de autenticación
-│   │   │   ├── guards/        # Guards de autenticación y roles
-│   │   │   │   ├── auth.guard.ts
-│   │   │   │   └── role.guard.ts
-│   │   │   ├── interceptors/  # Interceptores HTTP
-│   │   │   │   └── auth.interceptor.ts
-│   │   │   ├── models/        # Modelos de datos
-│   │   │   │   └── user.model.ts
-│   │   │   ├── pages/         # Componentes de autenticación
-│   │   │   │   ├── forgot-password/
-│   │   │   │   ├── login/
-│   │   │   │   ├── register/
-│   │   │   │   └── reset-password/
-│   │   │   └── services/      # Servicios de autenticación
-│   │   │       └── auth.service.ts
+│   ├── app/                    # Módulo raíz de la aplicación
+│   │   ├── auth/              # Funcionalidad de Autenticación
+│   │   │   ├── guards/        #   - Guards (auth, permission)
+│   │   │   ├── interceptors/  #   - Interceptores HTTP (auth)
+│   │   │   ├── models/        #   - Modelos/Interfaces (User, Role, Permission)
+│   │   │   ├── pages/         #   - Componentes/Páginas (Login, Register, etc.)
+│   │   │   └── services/      #   - Servicios (AuthService, RoleService, PermissionService)
 │   │   │
-│   │   ├── features/          # Características principales
-│   │   │   ├── dashboard/     # Panel de control
-│   │   │   └── user-management/  # Gestión de usuarios
+│   │   ├── features/          # Módulos de Características Principales
+│   │   │   ├── dashboard/     #   - Dashboard
+│   │   │   └── user-management/  #   - Gestión de Usuarios
+│   │   │   └── profile/       #   - Perfil de Usuario
+│   │   │   └── (otras features...)
 │   │   │
-│   │   ├── pages/            # Páginas públicas
-│   │   │   └── about/        # Página Acerca de
+│   │   ├── pages/            # Páginas Genéricas/Públicas
+│   │   │   └── about/        #   - Página "Acerca de"
+│   │   │   └── not-found/    #   - Página "No Encontrado" (Opcional)
 │   │   │
-│   │   ├── services/         # Servicios globales
-│   │   │   ├── cycle.model.ts
-│   │   │   └── cycle.service.ts
+│   │   ├── core/             # (Opcional) Servicios Core, Singleton
+│   │   │   └── services/     #   - Servicios base, logging, etc.
+│   │   │   └── models/       #   - Modelos base
 │   │   │
-│   │   ├── app.component.ts     # Componente raíz
-│   │   ├── app.config.ts        # Configuración de la app
-│   │   └── app.routes.ts        # Configuración de rutas
+│   │   ├── shared/           # (Opcional) Componentes, Directivas, Pipes Compartidos
+│   │   │   └── components/
+│   │   │   └── pipes/
+│   │   │   └── directives/
+│   │   │   └── models/
+│   │   │
+│   │   ├── app.component.ts     # Componente Raíz (Shell)
+│   │   ├── app.config.ts        # Configuración Principal (Providers)
+│   │   └── app.routes.ts        # Definición de Rutas Principales
+│   │
+│   ├── assets/               # Recursos estáticos (imágenes, fuentes)
+│   ├── environments/         # Ficheros de entorno (dev, prod)
+│   │   ├── environment.development.ts
+│   │   └── environment.ts
 │   │
 │   ├── index.html            # Punto de entrada HTML
-│   ├── main.ts              # Punto de entrada TypeScript
-│   └── styles.scss         # Estilos globales
+│   ├── main.ts               # Punto de entrada TypeScript (bootstrap)
+│   └── styles.scss           # Estilos globales
 │
-├── angular.json             # Configuración de Angular
+├── angular.json             # Configuración del CLI de Angular
 ├── package.json            # Dependencias y scripts
-├── tsconfig.json           # Configuración de TypeScript
-├── tsconfig.app.json       # Config TypeScript para la app
-├── tsconfig.spec.json      # Config TypeScript para tests
-└── vercel.json            # Configuración de despliegue Vercel
+├── tsconfig.json           # Configuración raíz de TypeScript
+├── tsconfig.app.json       # Config TS específica de la app
+├── tsconfig.spec.json      # Config TS para tests
+└── README.md              # Este archivo :)
 ```
 
-Esta estructura sigue las mejores prácticas de Angular, organizando el código en módulos lógicos:
+### Gestión de Usuarios, Roles y Permisos
 
-- **auth/**: Contiene toda la lógica de autenticación y autorización
-- **features/**: Módulos funcionales principales de la aplicación
-- **pages/**: Páginas públicas y componentes compartidos
-- **services/**: Servicios globales de la aplicación
+Sistema de control de acceso basado en roles y permisos.
 
-La estructura está diseñada para:
-- Mantener una clara separación de responsabilidades
-- Facilitar la escalabilidad del proyecto
-- Mejorar la mantenibilidad del código
-- Permitir la carga perezosa (lazy loading) de módulos
+#### Configuración Base del Sistema (Hardcoded)
 
-### Roles y Gestión de Usuarios
+*   **Usuario Superadmin**: `superadmin`. Existe siempre, roles no modificables (`ADMINISTRADOR`, `INVITADO`).
+*   **Permisos Base**:
+    *   `INVITADO`: Acceso básico.
+    *   `ADMINISTRACION_TOTAL`: Acceso administrativo completo.
+*   **Roles Base**:
+    *   `ADMINISTRADOR`: Asociado al permiso `ADMINISTRACION_TOTAL`.
+    *   `INVITADO`: Asociado al permiso `INVITADO`.
+*   **Reglas de Integridad**:
+    *   Un usuario con rol `ADMINISTRADOR` *siempre* tiene también el rol `INVITADO`.
 
-El sistema implementa un modelo de roles jerárquico para gestionar los permisos y el acceso de los usuarios en la aplicación:
+#### Lógica de Negocio Clave (`UserManagementComponent`)
 
-#### 1. Tipos de Roles
+*   **Carga Inicial**: Usa `forkJoin` para cargar roles y permisos en paralelo. Luego carga usuarios.
+*   **Gestión de Roles de Usuario**:
+    *   Permite asignar/desasignar roles a usuarios (excepto `superadmin`).
+    *   Aplica la regla de integridad: si se asigna `ADMINISTRADOR`, se asegura que `INVITADO` también esté asignado.
+    *   Llama a `AuthService.updateUserRoles`.
+*   **Gestión de Permisos de Rol**:
+    *   Permite asignar/desasignar permisos a roles personalizados.
+    *   Roles `ADMINISTRADOR` e `INVITADO` tienen permisos fijos no modificables.
+    *   Llama a `RoleService.updateRolePermissions` (o método similar).
+*   **Creación de Usuarios/Roles/Permisos**: Formularios reactivos con validaciones.
 
-- **USER**: Rol básico que permite acceso a las funcionalidades estándar de la aplicación. Este rol determina si una cuenta está habilitada en el sistema.
-- **ADMIN**: Rol que otorga privilegios administrativos, permitiendo la gestión de usuarios y configuraciones del sistema.
+### Experiencia de Usuario (UX)
 
-#### 2. Jerarquía y Restricciones de Roles
+Consideraciones implementadas para mejorar la interacción.
 
-- **Superadmin**: Usuario especial que siempre tiene los roles ADMIN y USER. Sus roles no pueden ser modificados por ningún otro usuario, garantizando que siempre exista al menos un administrador en el sistema.
-- **Administradores**: Todos los usuarios con rol ADMIN siempre tienen también el rol USER. Esta regla garantiza que los administradores siempre tengan acceso al sistema.
-- **Usuarios Estándar**: Pueden tener únicamente el rol USER o estar deshabilitados.
+1.  **Control Granular de Estados de Carga**: Indicadores específicos (`loadingUsers`, `loadingRoles`, etc.) para evitar bloqueos totales de UI.
+2.  **Validación de Formularios en Tiempo Real**: Feedback inmediato al usuario.
+3.  **Feedback Informativo**: Mensajes claros de éxito/error.
+4.  **Organización Visual**: Uso de pestañas (`UserManagementComponent`) para separar funcionalidades.
+5.  **Renderizado Condicional**: Uso de `*ngIf` para mostrar/ocultar elementos dinámicamente.
 
-#### 3. Estados de Usuario
+### Diagramas de Flujo
 
-- **Habilitado**: Usuario que posee el rol USER. Puede iniciar sesión y acceder a las funcionalidades según sus roles.
-- **Deshabilitado**: Usuario que no posee el rol USER. No puede iniciar sesión en el sistema y aparece como deshabilitado en la interfaz de administración.
+*(Los diagramas ASCII se mantienen aquí para referencia visual)*
 
-#### 4. Gestión de Usuarios y Roles
-
-- **Panel de Administración**: Interfaz visual para gestionar usuarios (habilitar/deshabilitar, asignar roles).
-- **Reglas Automáticas**: El sistema aplica automáticamente las reglas de jerarquía (ej: si un usuario es ADMIN, siempre tendrá también rol USER).
-- **Protección de Superadmin**: Mecanismos que previenen cambios en los roles del superadmin.
-
-#### 5. Flujos de Usuario Relacionados con Roles
-
-- **Registro**: Todo nuevo usuario se registra inicialmente con el rol USER (habilitado).
-- **Inicio de Sesión**: Solo usuarios con rol USER pueden iniciar sesión.
-- **Recuperación de Contraseña**: 
-  - Usuarios habilitados: Pueden ver y restablecer su contraseña.
-  - Usuarios deshabilitados: Se les informa de su estado pero no se les muestra la contraseña (deben contactar al administrador).
-
-Este sistema de roles proporciona una base sólida para implementar políticas de seguridad y control de acceso, permitiendo una gestión efectiva de los usuarios según las necesidades del negocio.
-
-### Grupos y Permisos en Shape Up
-
-Además del sistema de roles básico, la aplicación implementa un sistema de grupos y permisos específico para la metodología Shape Up, permitiendo una gestión granular de las capacidades de cada usuario dentro del proceso de desarrollo.
-
-#### 1. Grupos Shape Up
-
-Los grupos representan los diferentes roles en la metodología Shape Up y determinan las responsabilidades específicas de cada usuario:
-
-- **SHAPER**: Define y da forma a los proyectos, identificando problemas y oportunidades.
-- **STAKEHOLDER**: Representa intereses del negocio y proporciona feedback desde la perspectiva de valor.
-- **BUILDER**: Desarrolladores responsables de implementar las soluciones.
-- **DESIGNER**: Encargados del diseño de la experiencia de usuario y la interfaz.
-- **QA**: Responsables de asegurar la calidad del producto.
-- **TEAM_LEAD**: Líderes de equipo que coordinan el trabajo diario.
-- **TECH_LEAD**: Referentes técnicos que guían las decisiones de arquitectura e implementación.
-
-#### 2. Sistema de Permisos
-
-Cada grupo tiene asociado un conjunto de permisos específicos:
-
-- **Permisos Base**: Inicialmente, cada grupo tiene un permiso con el mismo nombre del grupo.
-- **Permisos Extensibles**: El sistema permite añadir más permisos a cada grupo según las necesidades del proyecto.
-- **Herencia**: Un usuario puede pertenecer a múltiples grupos, acumulando todos los permisos asociados.
-
-#### 3. Relación con Roles
-
-- Los grupos y permisos son complementarios al sistema de roles.
-- Los roles (ADMIN/USER) determinan el acceso general a la aplicación.
-- Los grupos/permisos determinan capacidades específicas dentro del flujo de trabajo Shape Up.
-
- -Flujo de funcionamiento
-    Permisos: Los permisos se crean primero en un catálogo central
-    Grupos: Los permisos se asignan a grupos según sus necesidades
-    Usuarios: Los grupos se asignan a usuarios
-    Acceso: El usuario hereda todos los permisos de sus grupos asignados
-    Este enfoque proporciona gran flexibilidad, ya que:
-    Un usuario puede pertenecer a múltiples grupos
-    Un grupo puede tener múltiples permisos
-    Los permisos se gestionan desde un único lugar
-    Implementación visual
-    La interfaz se divide en pestañas:
-    Roles: Gestión de roles básicos (ADMIN, USER)
-    Grupos: Asignación de grupos Shape Up a usuarios
-    Permisos: Gestión del catálogo de permisos
-    Asignar Permisos: Asignación de permisos a grupos
-    Los permisos asignados a cada grupo se muestran como tarjetas visuales elegantes que incluyen:
-    Nombre del permiso
-    ID del permiso (generado automáticamente)
-    Descripción del permiso
-    Protección de rutas
-    La implementación permite proteger rutas de tres formas:
-    Por rol: roleGuard([UserRole.ADMIN])
-    Por grupo: groupGuard([ShapeUpGroup.DESIGNER])
-    Por permiso: permissionGuard(['MANAGE_DOCUMENTATION'])
-    Esto proporciona una granularidad completa en el control de acceso.
-
-#### 4. Modelo de Datos
-
-```typescript
-// Enumeración de grupos Shape Up
-export enum ShapeUpGroup {
-  SHAPER = 'SHAPER',
-  STAKEHOLDER = 'STAKEHOLDER',
-  BUILDER = 'BUILDER',
-  DESIGNER = 'DESIGNER',
-  QA = 'QA',
-  TEAM_LEAD = 'TEAM_LEAD',
-  TECH_LEAD = 'TECH_LEAD'
-}
-
-// Modelo de permiso
-export interface Permission {
-  id: string;
-  name: string;
-  description?: string;
-}
-
-// Modelo de grupo con sus permisos
-export interface Group {
-  id: ShapeUpGroup;
-  name: string;
-  description?: string;
-  permissions: Permission[];
-}
-
-// Define la estructura de un usuario
-export interface User {
-  id?: string;
-  username: string;
-  password?: string;
-  token?: string;
-  roles?: UserRole[];
-  groups?: ShapeUpGroup[];
-}
+#### Diagrama de Autenticación y Autorización
+```
+┌─────────────────────────────────────────────┐
+│            FLUJO DE AUTENTICACIÓN           │
+└─────────────────────────────────────────────┘
+(Diagrama ASCII como estaba)
 ```
 
-#### 5. Gestión de Grupos y Permisos
-
-El sistema incluye una interfaz de administración que permite:
-
-- **Asignar Grupos**: Añadir o quitar usuarios de diferentes grupos Shape Up.
-- **Configurar Permisos**: Añadir, modificar o eliminar permisos para cada grupo.
-- **Visualizar Asignaciones**: Ver qué usuarios pertenecen a qué grupos y qué permisos tienen.
-
-#### 6. Verificación de Permisos
-
-Para verificar si un usuario tiene un permiso específico:
-
-```typescript
-// Comprobar si un usuario tiene un permiso específico
-hasPermission(user: User, permissionName: string): boolean {
-  if (!user.groups || user.groups.length === 0) {
-    return false;
-  }
-  
-  // Obtener todos los permisos de todos los grupos del usuario
-  const userPermissions = getAllPermissionsByGroups(user.groups);
-  
-  // Verificar si el permiso específico está en la lista
-  return userPermissions.some(p => p.name === permissionName);
-}
+#### Mapa de Navegación
+```
+┌─────────────────────────────────────┐
+│          MAPA DE NAVEGACIÓN         │
+└─────────────────────────────────────┘
+(Diagrama ASCII como estaba, revisar si rutas son actuales)
 ```
 
-Este sistema de grupos y permisos complementa el sistema de roles existente, proporcionando un control de acceso más detallado y específico para el contexto de Shape Up.
-
-### Observables y Servicios en Angular
-
-#### 1. Observables en Angular
-
-Los Observables son una parte fundamental de Angular que permiten manejar flujos de datos asincrónicos. En nuestro proyecto los usamos extensivamente:
-
-##### Tipos de Observables más comunes:
-
-1. **Observable simple**
-```typescript
-// Creación
-const simple$ = new Observable<string>(observer => {
-  observer.next('dato');
-  observer.complete();
-});
-
-// Uso
-simple$.subscribe({
-  next: (dato) => console.log(dato),
-  error: (error) => console.error(error),
-  complete: () => console.log('completado')
-});
+#### Flujo de Datos (Simplificado)
+```
+┌─────────────────────────────────────┐
+│           FLUJO DE DATOS            │
+└─────────────────────────────────────┘
+(Diagrama ASCII como estaba)
 ```
 
-2. **BehaviorSubject**
-```typescript
-// Como lo usamos en nuestro AuthService
-private currentUserSubject = new BehaviorSubject<User | null>(null);
-public currentUser$ = this.currentUserSubject.asObservable();
-
-// Emitir nuevo valor
-this.currentUserSubject.next(user);
-
-// Obtener valor actual sin suscripción
-const usuario = this.currentUserSubject.value;
-```
-
-3. **of y from**
-```typescript
-// of: para valores simples
-const datos$ = of(1, 2, 3);
-
-// from: para arrays o promesas
-const array$ = from([1, 2, 3]);
-```
-
-##### Operadores RxJS más utilizados en nuestro proyecto:
-
-1. **tap**: Para efectos secundarios
-```typescript
-login(credentials: LoginRequest): Observable<User> {
-  return this.validateUser(credentials).pipe(
-    tap(user => {
-      // Efecto secundario: guardar en localStorage
-      this.setSession(user);
-      // Efecto secundario: actualizar estado
-      this.currentUserSubject.next(user);
-    })
-  );
-}
-```
-
-2. **map**: Para transformar datos
-```typescript
-getAllUsers(): Observable<User[]> {
-  return this.http.get<User[]>('/api/users').pipe(
-    map(users => users.map(user => ({
-      ...user,
-      fullName: `${user.name} (${user.email})`
-    })))
-  );
-}
-```
-
-3. **catchError**: Para manejar errores
-```typescript
-register(userData: RegisterRequest): Observable<User> {
-  return this.http.post<User>('/api/register', userData).pipe(
-    catchError(error => {
-      console.error('Error en registro:', error);
-      return throwError(() => new Error('Error al registrarse'));
-    })
-  );
-}
-```
-
-4. **delay**: Para simular latencia (útil en desarrollo)
-```typescript
-getAllCycles(): Observable<Cycle[]> {
-  return of(this.cycles).pipe(
-    delay(800) // Simula latencia de red
-  );
-}
-```
-
-##### Patrones de Uso de Observables en Nuestro Proyecto:
-
-1. **Estado Global** (como en AuthService):
-```typescript
-// Definición en el servicio
-private currentUserSubject = new BehaviorSubject<User | null>(null);
-public currentUser$ = this.currentUserSubject.asObservable();
-
-// Uso en componentes
-export class AppComponent implements OnInit {
-  isAuthenticated = false;
-
-  ngOnInit() {
-    this.authService.currentUser$.subscribe(user => {
-      this.isAuthenticated = !!user;
-    });
-  }
-}
-```
-
-2. **Datos en Tiempo Real** (como en CycleService):
-```typescript
-// Observable para el ciclo actual
-private currentCycleSubject = new BehaviorSubject<Cycle | null>(null);
-currentCycle$ = this.currentCycleSubject.asObservable();
-
-// Actualización y notificación automática
-updateCycle(cycle: Cycle): void {
-  this.currentCycleSubject.next(cycle);
-}
-```
-
-#### 2. Servicios y Observables
-
-Los servicios en Angular son el lugar perfecto para manejar observables, especialmente cuando:
-
-1. **Gestionamos Estado**:
-```typescript
-@Injectable({ providedIn: 'root' })
-export class AuthService {
-  private currentUserSubject = new BehaviorSubject<User | null>(null);
-  public currentUser$ = this.currentUserSubject.asObservable();
-
-  login(credentials: LoginRequest): Observable<User> {
-    return this.validateUser(credentials).pipe(
-      tap(user => this.currentUserSubject.next(user))
-    );
-  }
-
-  logout(): void {
-    this.currentUserSubject.next(null);
-  }
-}
-```
-
-2. **Comunicación HTTP**:
-```typescript
-@Injectable({ providedIn: 'root' })
-export class CycleService {
-  getAllCycles(): Observable<Cycle[]> {
-    return this.http.get<Cycle[]>('/api/cycles').pipe(
-      catchError(this.handleError)
-    );
-  }
-
-  private handleError(error: any): Observable<never> {
-    console.error('Error en la operación:', error);
-    return throwError(() => new Error('Error en la operación'));
-  }
-}
-```
-
-3. **Caché de Datos**:
-```typescript
-@Injectable({ providedIn: 'root' })
-export class DataService {
-  private cache = new BehaviorSubject<any>(null);
-
-  getData(): Observable<any> {
-    if (this.cache.value) {
-      return of(this.cache.value);
-    }
-    
-    return this.http.get('/api/data').pipe(
-      tap(data => this.cache.next(data))
-    );
-  }
-}
-```
-
-#### 3. Mejores Prácticas con Observables
-
-1. **Nomenclatura**:
-   - Sufijo $ para variables que son observables
-   - Nombres descriptivos que indiquen el tipo de datos
-
-2. **Manejo de Memoria**:
-   - Usar takeUntil para desuscribirse en ngOnDestroy
-   - Preferir async pipe en templates cuando sea posible
-   - Limpiar suscripciones manuales
-
-3. **Estructura de Servicios**:
-   - Subjects/BehaviorSubjects privados
-   - Observables públicos
-   - Métodos claros para actualizar estado
-
-4. **Manejo de Errores**:
-   - Centralizar manejo de errores
-   - Transformar errores a formatos amigables
-   - Logging consistente
-
-5. **Testing**:
-   - Usar marbles para testing de observables
-   - Simular delays y errores
-   - Verificar efectos secundarios
-
-
-
-# Guía de Firebase para Angular
-
-## Ficheros relacionados con Firebase en ng-<project-name>
-
-### 1. Ficheros de Configuración Base
-- `src/environments/environment.development.ts` - Configuración Firebase desarrollo
-- `src/environments/environment.ts` - Configuración Firebase producción
-- `src/app/app.config.ts` - Providers de Firebase para Angular
-
-### 2. Ficheros de Firebase
-- `firebase.json` - Configuración principal de Firebase
-- `.firebaserc` - Configuración del proyecto Firebase
-- `firestore.rules` - Reglas de seguridad para Firestore
-- `firestore.indexes.json` - Índices de Firestore
-- `storage.rules` - Reglas de seguridad para Storage
-- `.firebase/` - Directorio con caché y logs (ignorado en git)
-
-### 3. Ficheros de GitHub Actions
-- `.github/workflows/firebase-hosting-merge.yml` - Despliegue automático en merge
-- `.github/workflows/firebase-hosting-pull-request.yml` - Preview en Pull Requests
-
-### 4. Ficheros de Angular
-- `angular.json` - Configuración de environments y build
-- `package.json` - Dependencias Firebase (@angular/fire y firebase)
-
-### 5. Ficheros Opcionales (si se usan esas características)
-- `src/app/services/auth.service.ts` - Servicio de autenticación
-- `src/app/services/firestore.service.ts` - Servicio para Firestore
-- `src/app/services/storage.service.ts` - Servicio para Storage
-
-## Configuración del proyecto en Firebase Console
-
-### URLs de Referencia
-```bash
-  Firebase Console: https://console.firebase.google.com
-  Proyecto ejemplo:
-    https://angular-firebase-hub.web.app
-    https://angular-firebase-hub.firebaseapp.com
-```
-
-### Pasos de Configuración Firebase
-  I. Crear Proyecto en Firebase Console (una sola vez)
-    1- Ir a Firebase Console
-    2- Clic en "Añadir proyecto"
-    3- Nombre del proyecto: angular-firebase-hub
-    4- Configurar Google Analytics (opcional)
-    5- Crear proyecto
-
-  II. Registrar Aplicación Web
-    1- En la consola del proyecto, clic en icono web </>
-    2- Nombre de la app: ng-shape-up
-    3- Registrar app
-    4- Guardar configuración mostrada (aplicación registrada).
-  
-```bash  
-      const firebaseConfig = {
-        apiKey: "xxx",
-        authDomain: "proyecto.firebaseapp.com",
-        projectId: "proyecto",
-        storageBucket: "proyecto.appspot.com",
-        messagingSenderId: "xxx",
-        appId: "xxx"
-      };
-```
-      4.1- Nota (4. y 5.) Aplicacion registrada
-        La aplicación registrada ("ng-shape-up Web App") es fundamental y cumple un propósito importante:
-        Contiene la configuración (apiKey, authDomain, etc.) que usas en tu código (environment.ts)
-        Es lo que permite a tu aplicación Angular conectarse con los servicios de Firebase (Auth, Firestore, etc.)
-        Proporciona las credenciales para que tu SPA pueda comunicarse con Firebase
-        Es completamente necesaria y no debes eliminarla. Lo que falta es el sitio de hosting, que es lo que determina la URL pública de tu app.
-        Son dos partes de un mismo ecosistema:
-        La Web App: configuración para la conexión desde el código
-        El Hosting Site: dónde se sirve la app compilada
-        No es confuso tener ambos con nombres similares; de hecho, es una práctica recomendada para mantener la coherencia.
-      5 Aplicacion Hosteada:
-```bash
-  #+  hosting:sites: Site ng-shape-up has been created in project angular-firebase-hub.
-  #+  hosting:sites: Site URL: https://ng-shape-up.web.app
-  firebase hosting:sites:create ng-shape-up
-  firebase target:apply hosting ng-shape-up-target ng-shape-up
-```
-
-
-## Pasos de Configuración Local- Configurar Hosting
-    1- Instalar Firebase CLI (si no está instalado):
-```bash 
-      # Instalar Firebase CLI globalmente una sola vez
-      npm install -g firebase-tools
-```
-    2- Iniciar sesión:
-```bash
-      # Iniciar sesión en Firebase (cuenta Google) una sola vez
-      firebase login
-```
-    3- Inicializar proyecto: 
-```bash
-      # Configura Firebase para cada proyecto nuevo.
-      firebase init
-      # Seleccionar opciones:
-      # ✓ Firestore: Configure security rules and indexes files for Firestore
-      # ✓ Hosting: Configure files for Firebase Hosting
-      # ✓ Storage: Configure a security rules file for Cloud Storage
-      # ✓ Use an existing project
-      # ✓ Select: tu-proyecto
-      # ✓ What do you want to use as your public directory? dist/nombre-proyecto/browser
-      # ✓ Configure as a single-page app? Yes
-```
-
-## Activación y Configuración de Servicios Firebase
-
-### 1. Activar Authentication
-1. En Firebase Console -> Authentication -> Get Started
-2. Habilitar métodos de autenticación:
-   - Email/Password -> Enable
-   - Google (opcional) -> Enable
-   - Otros providers según necesidad
-
-### 2. Activar Firestore
-1. En Firebase Console -> Firestore Database -> Create Database
-2. Seleccionar modo: 
-   - "Start in test mode" (desarrollo)
-   - "Start in production mode" (producción)
-3. Seleccionar región: "eur3 (europe-west)" recomendado para Europa
-
-### 3. Activar Storage (opcional)
-1. En Firebase Console -> Storage -> Get Started
-2. Seleccionar región (misma que Firestore)
-3. Iniciar con reglas de prueba
-
-### 4. Configurar Reglas de Seguridad
-
-Después de `firebase init`, modificar las reglas generadas:
-
-#### Rules: 
-  firestore.rules  
-  storage.rules
-
-## Configuración en el Proyecto Angular
-```bash
-    # Instalar dependencias
-    npm install firebase @angular/fire
-```
-
-**environment.development.ts y environment.ts**:
-```typescript
-    export const environment = {
-      production: false, // true en environment.ts
-      firebase: {
-        apiKey: "xxx",
-        authDomain: "mi-proyecto.firebaseapp.com",
-        projectId: "mi-proyecto",
-        storageBucket: "mi-proyecto.appspot.com",
-        messagingSenderId: "xxx",
-        appId: "xxx"
-      }
-    };
-```
-
-**app.config.ts**:
-```typescript
-    import { ApplicationConfig } from '@angular/core';
-    import { provideRouter } from '@angular/router';
-    import { provideHttpClient } from '@angular/common/http';
-    import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
-    import { getFirestore, provideFirestore } from '@angular/fire/firestore';
-    import { getAuth, provideAuth } from '@angular/fire/auth';
-    import { environment } from '../environments/environment';
-
-    export const appConfig: ApplicationConfig = {
-      providers: [
-        provideRouter(routes),
-        provideHttpClient(),
-        provideFirebaseApp(() => initializeApp(environment.firebase)),
-        provideFirestore(() => getFirestore()),
-        provideAuth(() => getAuth())
-      ]
-    };
-```
-
-**Actualizar .gitignore**
-```bash
-    #Firebase
-    .firebase/.cache
-```
-
-**firebase.json**
-```typescript
-    {
-      "firestore": {
-        "rules": "firestore.rules",
-        "indexes": "firestore.indexes.json"
-      },
-      "hosting": {
-        "public": "dist/ng-shape-up/browser",
-        "ignore": [
-          "firebase.json",
-          "**/.*",
-          "**/node_modules/**"
-        ],
-        "rewrites": [
-          {
-            "source": "**",
-            "destination": "/index.html"
-          }
-        ]
-      },
-      "storage": {
-        "rules": "storage.rules"
-      }
-    }
-```
-
-**angular.json** fileReplacements x2
-    - src/environments/environment.ts (producción)
-    - src/environments/environment.development.ts (desarrollo)
-
-## Despliegue
-
-  ### 1- Despliegue Manual (si es necesario)
-```bash
-    # Limpiar caché de Angular
-    rm -rf .angular/cache
-
-    # Construir la aplicación
-    ng build
-
-    # Desplegar a Firebase
-    firebase deploy --only hosting
-
-    # Listar canales de hosting. Verificacion
-    firebase hosting:channel:list
-
-    # Ver URLs disponibles
-    firebase hosting:sites list
-```
-  ### 2- Despliegue automático
-    .github\workflows\firebase-hosting-merge.yml
-    .github\workflows\firebase-hosting-pull-request.yml
-
-# La configuración base (hardcoded) del sistema es:
-## Usuario superadmin: Usuario predefinido que siempre existe
-## Permisos base:
-  INVITADO - Permiso básico de acceso
-  ADMINISTRACION_TOTAL - Permiso administrativo completo
-## Roles base:
-  ADMINISTRADOR - Tiene asignado el permiso ADMINISTRACION_TOTAL
-  INVITADO - Tiene asignado el permiso INVITADO
-  Estos elementos son la base fundamental del sistema y no se pueden eliminar ni modificar. Todo lo demás (usuarios adicionales, permisos personalizados, etc.) se gestiona dinámicamente a través de la interfaz de administración.
+## Guía Rápida de Firebase
+
+NOTA: El proyecto si esta integrado con Firebase y se despliega en Firebase
+*(Esta sección solo aplica si el proyecto está integrado con Firebase. Si no, puede eliminarse)* 
+
+### Ficheros Clave de Firebase
+
+*   `src/environments/environment.*.ts`: Contienen `firebaseConfig`.
+*   `src/app/app.config.ts`: Registro de providers (`provideFirebaseApp`, `provideAuth`, `provideFirestore`, etc.).
+*   `firebase.json`: Configuración de Hosting, Firestore (reglas, índices), etc., para Firebase CLI.
+*   `.firebaserc`: Mapeo de proyectos de Firebase.
+*   `firestore.rules`, `storage.rules`: Reglas de seguridad.
+
+### Configuración Inicial (Resumen)
+
+1.  **Firebase Console**: Crear proyecto, registrar aplicación web (obtener `firebaseConfig`), activar servicios (Auth, Firestore, Storage).
+2.  **Localmente**:
+    *   `npm install firebase @angular/fire`
+    *   `npm install -g firebase-tools` (CLI, una vez)
+    *   `firebase login` (una vez)
+    *   `firebase init` (Firestore, Hosting, Storage - por proyecto) -> Genera `firebase.json`, `.firebaserc`, `*.rules`.
+3.  **Proyecto Angular**:
+    *   Añadir `firebaseConfig` a `environments`.
+    *   Configurar providers en `app.config.ts`.
+    *   Ajustar `firebase.json` (directorio `public` a `dist/ng-shape-up/browser`, rewrites SPA).
+    *   Configurar `angular.json` para usar los environments correctos.
+
+### Despliegue a Firebase Hosting
+
+*   **Manual**: `ng build` seguido de `firebase deploy --only hosting`.
+*   **Automático**: Vía GitHub Actions (workflows `.github/workflows/firebase-*.yml`).

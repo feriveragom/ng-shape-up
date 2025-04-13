@@ -9,12 +9,13 @@
     {{ error }}
   </div>
   
-  <div class="loading-indicator" *ngIf="loading && loadingRoles && loadingPermissions">
+  <!-- Indicador de carga inicial (carga toda la página) -->
+  <div class="loading-indicator" *ngIf="initialLoading">
     Cargando datos...
   </div>
   
-  <!-- Tabs de navegación -->
-  <div class="management-tabs" *ngIf="!(loading && loadingRoles && loadingPermissions)">
+  <!-- Tabs de navegación (visible cuando no hay carga inicial) -->
+  <div class="management-tabs" *ngIf="!initialLoading">
     <div 
       class="tab" 
       [class.active-tab]="activeTab === 'roles'"
@@ -41,96 +42,170 @@
       [class.active-tab]="activeTab === 'role-permissions'"
       (click)="setActiveTab('role-permissions')"
     >
-      Asignar Permisos
+      Roles y Permisos
     </div>
   </div>
   
   <!-- Tab de Roles (Vista principal) -->
-  <div *ngIf="activeTab === 'roles' && !loading && users.length > 0">
-    <table class="users-table">
-      <thead>
-        <tr>
-          <th>Username</th>
-          <th>Estado</th>
-          <th>Roles Asignados</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
-          <td>{{ user.username }}</td>
-          <td>
-            <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
-              {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
-            </span>
-          </td>
-          <td>
-            <div class="role-badges">
-              <span 
-                *ngFor="let role of user.roles" 
-                class="role-badge"
-                [class.admin-role]="role === 'ADMINISTRADOR'"
-                [class.user-role]="role === 'INVITADO'"
-                [class.custom-role]="role !== 'ADMINISTRADOR' && role !== 'INVITADO'"
-              >
-                {{ role }}
-              </span>
-              <span *ngIf="!user.roles || user.roles.length === 0" class="no-roles">
-                Sin roles asignados
-              </span>
+  <div *ngIf="activeTab === 'roles' && !initialLoading">
+    <!-- Formulario de creación de usuarios (siempre visible durante carga de usuarios) -->
+    <div class="permissions-container">
+      <div class="permissions-form-section">
+        <h2>Crear Nuevo Usuario</h2>
+        
+        <form [formGroup]="userForm" (ngSubmit)="onSubmitUser()" class="permission-form">
+          <div class="form-field">
+            <label for="username">Nombre de Usuario:</label>
+            <input 
+              type="text" 
+              id="username" 
+              formControlName="username" 
+              placeholder="Nombre de usuario"
+            >
+            <div *ngIf="userForm.get('username')?.invalid && userForm.get('username')?.touched" class="form-error">
+              <span *ngIf="userForm.get('username')?.errors?.['required']">El nombre de usuario es obligatorio</span>
+              <span *ngIf="userForm.get('username')?.errors?.['minlength']">El nombre de usuario debe tener al menos 6 caracteres</span>
             </div>
-          </td>
-          <td>
-            <div class="role-actions">
-              <div class="actions">
-                <div class="checkbox-group">
-                  <label>
-                    <input 
-                      type="checkbox" 
-                      [(ngModel)]="selectedRoles[user.id!][UserRole.ADMINISTRADOR]" 
-                      [disabled]="isSuperAdmin(user)"
-                      [checked]="user.roles?.includes(UserRole.ADMINISTRADOR)"
-                      (change)="onRoleChange(user)"
-                    />
-                    ADMINISTRADOR
-                  </label>
+          </div>
+          
+          <div class="form-field">
+            <label for="userPassword">Contraseña:</label>
+            <input 
+              type="password" 
+              id="userPassword" 
+              formControlName="password" 
+              placeholder="Contraseña"
+            >
+            <div *ngIf="userForm.get('password')?.invalid && userForm.get('password')?.touched" class="form-error">
+              <span *ngIf="userForm.get('password')?.errors?.['required']">La contraseña es obligatoria</span>
+              <span *ngIf="userForm.get('password')?.errors?.['minlength']">La contraseña debe tener al menos 6 caracteres</span>
+            </div>
+          </div>
+          
+          <div class="form-field">
+            <label for="confirmPassword">Confirmar Contraseña:</label>
+            <input 
+              type="password" 
+              id="confirmPassword" 
+              formControlName="confirmPassword" 
+              placeholder="Confirmar contraseña"
+            >
+            <div *ngIf="userForm.get('confirmPassword')?.invalid && userForm.get('confirmPassword')?.touched" class="form-error">
+              <span *ngIf="userForm.get('confirmPassword')?.errors?.['required']">Debe confirmar la contraseña</span>
+            </div>
+            <div *ngIf="userForm.hasError('passwordMismatch') && userForm.get('confirmPassword')?.touched" class="form-error">
+              Las contraseñas no coinciden
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              type="submit" 
+              [disabled]="userForm.invalid"
+              class="primary-button"
+            >
+              Crear Usuario
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="permissions-list-section">
+        <h2>Usuarios Registrados</h2>
+        
+        <!-- Indicador de carga específico para la tabla de usuarios -->
+        <div *ngIf="loadingUsers" class="loading-indicator">
+          Cargando usuarios...
+        </div>
+        
+        <div *ngIf="!loadingUsers && users.length === 0" class="no-permissions-message">
+          No hay usuarios registrados.
+        </div>
+        
+        <table *ngIf="!loadingUsers && users.length > 0" class="users-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Estado</th>
+              <th>Roles Asignados</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
+              <td>{{ user.username }}</td>
+              <td>
+                <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
+                  {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
+                </span>
+              </td>
+              <td>
+                <div class="role-badges">
+                  <span 
+                    *ngFor="let role of user.roles" 
+                    class="role-badge"
+                    [class.admin-role]="role === 'ADMINISTRADOR'"
+                    [class.user-role]="role === 'INVITADO'"
+                    [class.custom-role]="role !== 'ADMINISTRADOR' && role !== 'INVITADO'"
+                  >
+                    {{ role }}
+                  </span>
+                  <span *ngIf="!user.roles || user.roles.length === 0" class="no-roles">
+                    Sin roles asignados
+                  </span>
                 </div>
-                <div class="checkbox-group">
-                  <label>
-                    <input 
-                      type="checkbox" 
-                      [(ngModel)]="selectedRoles[user.id!][UserRole.INVITADO]" 
-                      [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMINISTRADOR]"
-                      [checked]="user.roles?.includes(UserRole.INVITADO)"
-                      (change)="onRoleChange(user)"
-                    />
-                    INVITADO
-                  </label>
-                </div>
-                <!-- Roles personalizados -->
-                <div *ngFor="let role of roles" class="checkbox-group">
-                  <ng-container *ngIf="!isPredefinedRoleById(role.id) && !isSuperAdmin(user)">
+              </td>
+              <td>
+                <div class="role-actions">
+                  <div class="checkbox-group">
                     <label>
                       <input 
-                        type="checkbox"
-                        [(ngModel)]="selectedRoles[user.id!][role.id]"
-                        [checked]="user.roles?.includes(role.id)"
+                        type="checkbox" 
+                        [(ngModel)]="selectedRoles[user.id!][UserRole.ADMINISTRADOR]" 
+                        [disabled]="isSuperAdmin(user)"
+                        [checked]="user.roles?.includes(UserRole.ADMINISTRADOR)"
                         (change)="onRoleChange(user)"
                       />
-                      {{ role.name | uppercase }}
+                      ADMINISTRADOR
                     </label>
-                  </ng-container>
+                  </div>
+                  <div class="checkbox-group">
+                    <label>
+                      <input 
+                        type="checkbox" 
+                        [(ngModel)]="selectedRoles[user.id!][UserRole.INVITADO]" 
+                        [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMINISTRADOR]"
+                        [checked]="user.roles?.includes(UserRole.INVITADO)"
+                        (change)="onRoleChange(user)"
+                      />
+                      INVITADO
+                    </label>
+                  </div>
+                  <!-- Roles personalizados -->
+                  <div *ngFor="let role of roles" class="checkbox-group">
+                    <ng-container *ngIf="!isPredefinedRoleById(role.id) && !isSuperAdmin(user)">
+                      <label>
+                        <input 
+                          type="checkbox"
+                          [(ngModel)]="selectedRoles[user.id!][role.id]"
+                          [checked]="user.roles?.includes(role.id)"
+                          (change)="onRoleChange(user)"
+                        />
+                        {{ role.name | uppercase }}
+                      </label>
+                    </ng-container>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
   
   <!-- Tab de Gestión de Permisos -->
-  <div *ngIf="activeTab === 'permissions' && !loadingPermissions">
+  <div *ngIf="activeTab === 'permissions' && !initialLoading">
     <div class="permissions-container">
       <div class="permissions-form-section">
         <h2>{{ editingPermission ? 'Editar Permiso' : 'Crear Nuevo Permiso' }}</h2>
@@ -187,11 +262,15 @@
       <div class="permissions-list-section">
         <h2>Permisos Disponibles</h2>
         
-        <div *ngIf="permissions.length === 0" class="no-permissions-message">
+        <div *ngIf="loadingPermissions" class="loading-indicator">
+          Cargando permisos...
+        </div>
+        
+        <div *ngIf="!loadingPermissions && permissions.length === 0" class="no-permissions-message">
           No hay permisos definidos. Crea el primero usando el formulario.
         </div>
         
-        <table *ngIf="permissions.length > 0" class="permissions-table">
+        <table *ngIf="!loadingPermissions && permissions.length > 0" class="permissions-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -234,7 +313,7 @@
   </div>
   
   <!-- Tab de Asignación de Permisos a Roles -->
-  <div *ngIf="activeTab === 'role-permissions' && !loadingRoles && !loadingPermissions">
+  <div *ngIf="activeTab === 'role-permissions' && !initialLoading">
     <div class="role-permissions-container">
       <div *ngIf="!selectedRoleForPermissions" class="role-selection-section">
         <h2>Selecciona un Rol para Gestionar sus Permisos</h2>
@@ -288,7 +367,6 @@
                   [(ngModel)]="selectedRolePermissions[selectedRoleForPermissions][permission.id]"
                   [disabled]="isPredefinedRole(selectedRoleForPermissions) || 
                             (isPredefinedRole(selectedRoleForPermissions) && !isDefaultPermissionForRole(selectedRoleForPermissions, permission.id))"
-                  (change)="console.log(permission.id, selectedRolePermissions[selectedRoleForPermissions][permission.id])"
                 />
                 <div class="permission-details">
                   <span class="permission-name">{{ permission.name }}</span>
@@ -322,7 +400,7 @@
   </div>
   
   <!-- Tab de Gestión de Roles -->
-  <div *ngIf="activeTab === 'manage-roles' && !loadingRoles">
+  <div *ngIf="activeTab === 'manage-roles' && !initialLoading">
     <div class="permissions-container">
       <div class="permissions-form-section">
         <h2>{{ editingRole ? 'Editar Rol' : 'Crear Nuevo Rol' }}</h2>
@@ -379,11 +457,15 @@
       <div class="permissions-list-section">
         <h2>Roles Disponibles</h2>
         
-        <div *ngIf="roles.length === 0" class="no-permissions-message">
+        <div *ngIf="loadingRoles" class="loading-indicator">
+          Cargando roles...
+        </div>
+        
+        <div *ngIf="!loadingRoles && roles.length === 0" class="no-permissions-message">
           No hay roles definidos. Crea el primero usando el formulario.
         </div>
         
-        <table *ngIf="roles.length > 0" class="permissions-table">
+        <table *ngIf="!loadingRoles && roles.length > 0" class="permissions-table">
           <thead>
             <tr>
               <th>ID</th>
@@ -425,7 +507,7 @@
     </div>
   </div>
   
-  <div class="no-users-message" *ngIf="!loading && users.length === 0 && activeTab === 'roles'">
+  <div class="no-users-message" *ngIf="!initialLoading && users.length === 0 && activeTab === 'roles'">
     No hay usuarios registrados.
   </div>
 </div> 

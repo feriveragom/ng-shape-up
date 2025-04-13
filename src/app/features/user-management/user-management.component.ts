@@ -23,9 +23,10 @@ export class UserManagementComponent implements OnInit {
   permissions: Permission[] = [];
   selectedRoles: { [key: string]: { [role: string]: boolean } } = {};
   selectedRolePermissions: { [roleId: string]: { [permissionId: string]: boolean } } = {};
-  loading = true;
-  loadingRoles = true;
-  loadingPermissions = true;
+  initialLoading = true; // Carga inicial de toda la página
+  loadingUsers = false;  // Carga específica de usuarios
+  loadingRoles = false;
+  loadingPermissions = false;
   message = '';
   error = '';
   activeTab = 'roles'; // 'roles', 'permissions', 'role-permissions'
@@ -36,6 +37,9 @@ export class UserManagementComponent implements OnInit {
   // Formulario para crear nuevos permisos
   permissionForm: FormGroup;
   editingPermission: Permission | null = null;
+  
+  // Formulario para crear nuevos usuarios
+  userForm: FormGroup;
   
   // Variables para controlar edición
   selectedRoleForPermissions: string | null = null;
@@ -59,19 +63,56 @@ export class UserManagementComponent implements OnInit {
       name: ['', [Validators.required, Validators.minLength(3)]],
       description: ['', Validators.required]
     });
+    
+    // Inicializar formulario de usuarios
+    this.userForm = this.fb.group({
+      username: ['', [Validators.required, Validators.minLength(6)]],
+      password: ['', [Validators.required, Validators.minLength(6)]],
+      confirmPassword: ['', [Validators.required]]
+    }, {
+      validators: this.passwordMatchValidator
+    });
   }
 
   ngOnInit(): void {
-    this.loadUsers();
-    this.loadRoles();
-    this.loadPermissions();
+    // Iniciamos carga de datos
+    this.initialLoading = true;
+    
+    // Cargamos los roles y permisos primero
+    forkJoin({
+      roles: this.roleService.getAllRoles(),
+      permissions: this.permissionService.getAllPermissions()
+    }).subscribe({
+      next: (results) => {
+        // Guardamos los resultados
+        this.roles = results.roles;
+        this.permissions = results.permissions;
+        
+        // Inicializamos los permisos por rol
+        this.roles.forEach(role => {
+          this.selectedRolePermissions[role.id] = {};
+          if (role.permissions && role.permissions.length > 0) {
+            role.permissions.forEach(permission => {
+              this.selectedRolePermissions[role.id][permission.id] = true;
+            });
+          }
+        });
+        
+        // Ahora cargamos los usuarios
+        this.loadUsers();
+      },
+      error: (err) => {
+        this.error = 'Error al cargar datos iniciales: ' + err.message;
+        this.initialLoading = false;
+      }
+    });
   }
 
   /**
    * Carga la lista de usuarios desde el servicio
    */
   loadUsers(): void {
-    this.loading = true;
+    this.loadingUsers = true;
     this.error = '';
     
     this.authService.getAllUsers().subscribe({
@@ -93,11 +134,13 @@ export class UserManagementComponent implements OnInit {
           });
         });
         
-        this.loading = false;
+        this.initialLoading = false;
+        this.loadingUsers = false;
       },
       error: (err) => {
         this.error = 'Error al cargar usuarios: ' + err.message;
-        this.loading = false;
+        this.initialLoading = false;
+        this.loadingUsers = false;
       }
     });
   }
@@ -108,7 +151,6 @@ export class UserManagementComponent implements OnInit {
     this.roleService.getAllRoles().subscribe({
       next: (roles) => {
         this.roles = roles;
-        console.log('Roles cargados:', this.roles);
         
         // Inicializar la selección de permisos para cada rol
         roles.forEach(role => {
@@ -117,17 +159,12 @@ export class UserManagementComponent implements OnInit {
             role.permissions.forEach(permission => {
               this.selectedRolePermissions[role.id][permission.id] = true;
             });
-            console.log(`Rol ${role.id} tiene ${role.permissions.length} permisos:`, 
-              role.permissions.map(p => p.id));
-          } else {
-            console.log(`Rol ${role.id} no tiene permisos asignados`);
           }
         });
         
         this.loadingRoles = false;
       },
       error: (err) => {
-        console.error('Error al cargar roles:', err);
         this.error = 'Error al cargar roles: ' + err.message;
         this.loadingRoles = false;
       }
@@ -244,21 +281,31 @@ export class UserManagementComponent implements OnInit {
     
     const permissionData = this.permissionForm.value;
     
+    // Mostrar indicador de carga
+    this.loadingPermissions = true;
+    
     if (this.editingPermission) {
       // Editar permiso existente
       this.permissionService.updatePermission(this.editingPermission.id, permissionData).subscribe({
         next: (updatedPermission) => {
           // Actualizar permiso en la lista
-          const index = this.permissions.findIndex(p => p.id === updatedPermission.id);
-          if (index !== -1) {
-            this.permissions[index] = updatedPermission;
-          }
-          
-          this.message = `Permiso '${updatedPermission.name}' actualizado`;
-          this.resetPermissionForm();
-          setTimeout(() => this.message = '', 3000);
+          this.permissionService.getAllPermissions().subscribe({
+            next: (permissions) => {
+              this.permissions = permissions;
+              this.message = `Permiso '${updatedPermission.name}' actualizado`;
+              this.resetPermissionForm();
+              this.loadingPermissions = false;
+              setTimeout(() => this.message = '', 3000);
+            },
+            error: (err) => {
+              this.loadingPermissions = false;
+              this.error = 'Error al cargar permisos: ' + err.message;
+              setTimeout(() => this.error = '', 3000);
+            }
+          });
         },
         error: (err) => {
+          this.loadingPermissions = false;
           this.error = 'Error al actualizar permiso: ' + err.message;
           setTimeout(() => this.error = '', 3000);
         }
@@ -267,12 +314,24 @@ export class UserManagementComponent implements OnInit {
       // Crear nuevo permiso
       this.permissionService.addPermission(permissionData).subscribe({
         next: (newPermission) => {
-          this.permissions = [...this.permissions, newPermission];
-          this.message = `Permiso '${newPermission.name}' creado`;
-          this.resetPermissionForm();
-          setTimeout(() => this.message = '', 3000);
+          // Recargar todos los permisos
+          this.permissionService.getAllPermissions().subscribe({
+            next: (permissions) => {
+              this.permissions = permissions;
+              this.message = `Permiso '${newPermission.name}' creado`;
+              this.resetPermissionForm();
+              this.loadingPermissions = false;
+              setTimeout(() => this.message = '', 3000);
+            },
+            error: (err) => {
+              this.loadingPermissions = false;
+              this.error = 'Error al cargar permisos: ' + err.message;
+              setTimeout(() => this.error = '', 3000);
+            }
+          });
         },
         error: (err) => {
+          this.loadingPermissions = false;
           this.error = 'Error al crear permiso: ' + err.message;
           setTimeout(() => this.error = '', 3000);
         }
@@ -342,8 +401,6 @@ export class UserManagementComponent implements OnInit {
         });
       }
     }
-    
-    console.log('Permisos inicializados para el rol:', role.id, this.selectedRolePermissions[role.id]);
   }
   
   /**
@@ -371,7 +428,6 @@ export class UserManagementComponent implements OnInit {
    */
   saveRolePermissions(): void {
     if (!this.selectedRoleForPermissions) {
-      console.error('No hay un rol seleccionado para guardar permisos');
       return;
     }
     
@@ -400,17 +456,8 @@ export class UserManagementComponent implements OnInit {
     const permissionsToSave = Object.keys(this.selectedRolePermissions[roleId])
       .filter(permId => this.selectedRolePermissions[roleId][permId] === true);
     
-    console.log('Componente: Permisos a guardar para el rol', roleId, ':', permissionsToSave);
-    
-    if (permissionsToSave.length === 0) {
-      console.warn('⚠️ No hay permisos seleccionados para guardar');
-    }
-    
     this.roleService.updateRolePermissions(roleId, permissionsToSave).subscribe({
       next: (updatedRole) => {
-        console.log('Componente: Rol actualizado recibido del servidor:', updatedRole);
-        console.log('Componente: Permisos en el rol actualizado:', updatedRole.permissions.map(p => p.id));
-        
         // Actualizar el rol en la lista local
         const index = this.roles.findIndex(r => r.id === updatedRole.id);
         if (index !== -1) {
@@ -419,9 +466,6 @@ export class UserManagementComponent implements OnInit {
             ...updatedRole,
             permissions: [...updatedRole.permissions]
           };
-          console.log('Componente: Rol actualizado en la lista con', updatedRole.permissions.length, 'permisos');
-        } else {
-          console.error('Componente: No se encontró el rol en la lista local');
         }
         
         // Actualizar los permisos seleccionados para este rol
@@ -442,7 +486,6 @@ export class UserManagementComponent implements OnInit {
         this.loadRoles();
       },
       error: (err) => {
-        console.error('Error al guardar permisos:', err);
         this.error = 'Error al actualizar permisos: ' + err.message;
         setTimeout(() => this.error = '', 3000);
       }
@@ -481,25 +524,37 @@ export class UserManagementComponent implements OnInit {
     
     const roleData = this.roleForm.value;
     
+    // Mostrar indicador de carga
+    this.loadingRoles = true;
+    
     if (this.editingRole) {
       // Editar rol existente
       this.roleService.updateRole(this.editingRole.id, roleData).subscribe({
         next: (updatedRole) => {
-          // Actualizar rol en la lista
-          if (updatedRole) {
-            const index = this.roles.findIndex(r => r.id === updatedRole.id);
-            if (index !== -1) {
-              this.roles[index] = updatedRole;
+          // Actualizar la lista completa de roles
+          this.roleService.getAllRoles().subscribe({
+            next: (roles) => {
+              this.roles = roles;
+              
+              if (updatedRole) {
+                this.message = `Rol '${updatedRole.name}' actualizado`;
+              } else {
+                this.message = 'Rol actualizado';
+              }
+              
+              this.resetRoleForm();
+              this.loadingRoles = false;
+              setTimeout(() => this.message = '', 3000);
+            },
+            error: (err) => {
+              this.loadingRoles = false;
+              this.error = 'Error al cargar roles: ' + err.message;
+              setTimeout(() => this.error = '', 3000);
             }
-            
-            this.message = `Rol '${updatedRole.name}' actualizado`;
-          } else {
-            this.message = 'Rol actualizado';
-          }
-          this.resetRoleForm();
-          setTimeout(() => this.message = '', 3000);
+          });
         },
         error: (err) => {
+          this.loadingRoles = false;
           this.error = 'Error al actualizar rol: ' + err.message;
           setTimeout(() => this.error = '', 3000);
         }
@@ -508,17 +563,24 @@ export class UserManagementComponent implements OnInit {
       // Crear nuevo rol
       this.roleService.createRole(roleData).subscribe({
         next: (newRole) => {
-          // No actualizar directamente la lista local
-          // En su lugar, recargar todos los roles del servicio
-          this.roleService.getAllRoles().subscribe(roles => {
-            this.roles = roles;
-            
-            this.message = `Rol '${newRole.name}' creado`;
-            this.resetRoleForm();
-            setTimeout(() => this.message = '', 3000);
+          // Recargar todos los roles del servicio
+          this.roleService.getAllRoles().subscribe({
+            next: (roles) => {
+              this.roles = roles;
+              this.message = `Rol '${newRole.name}' creado`;
+              this.resetRoleForm();
+              this.loadingRoles = false;
+              setTimeout(() => this.message = '', 3000);
+            },
+            error: (err) => {
+              this.loadingRoles = false;
+              this.error = 'Error al cargar roles: ' + err.message;
+              setTimeout(() => this.error = '', 3000);
+            }
           });
         },
         error: (err) => {
+          this.loadingRoles = false;
           this.error = 'Error al crear rol: ' + err.message;
           setTimeout(() => this.error = '', 3000);
         }
@@ -562,5 +624,72 @@ export class UserManagementComponent implements OnInit {
   resetRoleForm(): void {
     this.roleForm.reset();
     this.editingRole = null;
+  }
+
+  /**
+   * Método para crear un nuevo usuario
+   */
+  onSubmitUser(): void {
+    if (this.userForm.invalid) {
+      return;
+    }
+    
+    const userData = {
+      username: this.userForm.value.username,
+      password: this.userForm.value.password
+    };
+    
+    // Mostrar indicador de carga solo para usuarios
+    this.loadingUsers = true;
+    
+    // Crear un usuario usando el método específico para administradores
+    this.authService.createUser(userData).subscribe({
+      next: (newUser) => {
+        // Actualizar la lista de usuarios
+        this.authService.getAllUsers().subscribe({
+          next: (updatedUsers) => {
+            this.users = updatedUsers;
+            
+            // Inicializar selección de roles para el nuevo usuario
+            this.selectedRoles[newUser.id!] = {
+              [UserRole.ADMINISTRADOR]: false,
+              [UserRole.INVITADO]: true
+            };
+            
+            // Añadir roles personalizados
+            this.roles.forEach(role => {
+              if (!this.isPredefinedRoleById(role.id)) {
+                this.selectedRoles[newUser.id!][role.id] = false;
+              }
+            });
+            
+            this.message = `Usuario '${newUser.username}' creado correctamente`;
+            this.userForm.reset({
+              username: '',
+              password: '',
+              confirmPassword: ''
+            });
+            this.loadingUsers = false;
+            setTimeout(() => this.message = '', 3000);
+          },
+          error: (err) => {
+            this.loadingUsers = false;
+            this.error = 'Error al actualizar lista de usuarios: ' + err.message;
+            setTimeout(() => this.error = '', 3000);
+          }
+        });
+      },
+      error: (err) => {
+        this.loadingUsers = false;
+        this.error = 'Error al crear usuario: ' + err.message;
+        setTimeout(() => this.error = '', 3000);
+      }
+    });
+  }
+
+  passwordMatchValidator(form: FormGroup): { [key: string]: boolean } | null {
+    const password = form.get('password')?.value;
+    const confirmPassword = form.get('confirmPassword')?.value;
+    return password === confirmPassword ? null : { passwordMismatch: true };
   }
 } 

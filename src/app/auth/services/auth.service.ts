@@ -28,7 +28,6 @@ export class AuthService {
         token: 'admin-token',
         roles: [UserRole.ADMINISTRADOR, UserRole.INVITADO] // Superadmin con rol Administrador
       });
-      console.log('Admin user created:', this.users);
     }
     
     // Restaurar usuario de sesión si existe
@@ -81,8 +80,6 @@ export class AuthService {
 
     // Agregar a la lista de usuarios
     this.users.push(newUser);
-    console.log('Usuario registrado:', newUser);
-    console.log('Lista actualizada de usuarios:', this.users);
 
     // Retornar respuesta simulada
     return of(newUser).pipe(
@@ -135,15 +132,11 @@ export class AuthService {
 
   // Solicitar recuperación de contraseña
   forgotPassword(request: ForgotPasswordRequest): Observable<{username: string, password?: string, isDisabled?: boolean} | null> {
-    console.log('Buscando username:', request.username);
-    console.log('Lista de usuarios:', this.users);
-    
+        
     // Buscar el usuario por username
     const user = this.users.find(u => 
       u.username.toLowerCase() === request.username.toLowerCase()
     );
-    
-    console.log('Usuario encontrado:', user);
     
     if (user) {
       // Verificar si el usuario está deshabilitado (no tiene el rol INVITADO)
@@ -180,7 +173,7 @@ export class AuthService {
     return of(undefined).pipe(
       delay(800),  // Simulamos latencia
       tap(() => {
-        console.log('Contraseña reseteada para:', request.username);
+        
       })
     );
   }
@@ -241,12 +234,47 @@ export class AuthService {
       localStorage.setItem('currentUser', JSON.stringify(this.users[userIndex]));
     }
     
-    console.log('Roles actualizados:', this.users[userIndex]);
     return of(this.users[userIndex]).pipe(delay(500));
   }
 
   // Añadir este método público
   getCurrentUser(): User | null {
     return this.currentUserSubject.value;
+  }
+
+  // Método para crear usuarios desde el panel de administración
+  createUser(userData: RegisterRequest): Observable<User> {
+    // Verificar si el usuario actual es admin
+    if (!this.currentUserHasRole(UserRole.ADMINISTRADOR)) {
+      return throwError(() => new Error('No tienes permiso para crear usuarios'));
+    }
+
+    // Verificar si el username ya existe
+    const existingUser = this.users.find(u => u.username === userData.username);
+    if (existingUser) {
+      return throwError(() => new Error('El username ya está registrado'));
+    }
+
+    // Verificar si intenta registrarse con el nombre del superadmin
+    if (userData.username === 'superadmin') {
+      return throwError(() => new Error('Este nombre de usuario está reservado'));
+    }
+
+    // Crear nuevo usuario INCLUYENDO la contraseña
+    const newUser: User = {
+      id: (this.users.length + 1).toString(),
+      username: userData.username,
+      password: userData.password,
+      token: `token-${Date.now()}`,
+      roles: [UserRole.INVITADO] // Rol Invitado por defecto
+    };
+
+    // Agregar a la lista de usuarios
+    this.users.push(newUser);
+
+    // Retornar respuesta simulada SIN cambiar el usuario autenticado
+    return of(newUser).pipe(
+      delay(800) // Simulando latencia
+    );
   }
 } 
