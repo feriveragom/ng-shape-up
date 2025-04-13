@@ -817,6 +817,42 @@ La estructura está diseñada para:
 - Mejorar la mantenibilidad del código
 - Permitir la carga perezosa (lazy loading) de módulos
 
+### Roles y Gestión de Usuarios
+
+El sistema implementa un modelo de roles jerárquico para gestionar los permisos y el acceso de los usuarios en la aplicación:
+
+#### 1. Tipos de Roles
+
+- **USER**: Rol básico que permite acceso a las funcionalidades estándar de la aplicación. Este rol determina si una cuenta está habilitada en el sistema.
+- **ADMIN**: Rol que otorga privilegios administrativos, permitiendo la gestión de usuarios y configuraciones del sistema.
+
+#### 2. Jerarquía y Restricciones de Roles
+
+- **Superadmin**: Usuario especial que siempre tiene los roles ADMIN y USER. Sus roles no pueden ser modificados por ningún otro usuario, garantizando que siempre exista al menos un administrador en el sistema.
+- **Administradores**: Todos los usuarios con rol ADMIN siempre tienen también el rol USER. Esta regla garantiza que los administradores siempre tengan acceso al sistema.
+- **Usuarios Estándar**: Pueden tener únicamente el rol USER o estar deshabilitados.
+
+#### 3. Estados de Usuario
+
+- **Habilitado**: Usuario que posee el rol USER. Puede iniciar sesión y acceder a las funcionalidades según sus roles.
+- **Deshabilitado**: Usuario que no posee el rol USER. No puede iniciar sesión en el sistema y aparece como deshabilitado en la interfaz de administración.
+
+#### 4. Gestión de Usuarios y Roles
+
+- **Panel de Administración**: Interfaz visual para gestionar usuarios (habilitar/deshabilitar, asignar roles).
+- **Reglas Automáticas**: El sistema aplica automáticamente las reglas de jerarquía (ej: si un usuario es ADMIN, siempre tendrá también rol USER).
+- **Protección de Superadmin**: Mecanismos que previenen cambios en los roles del superadmin.
+
+#### 5. Flujos de Usuario Relacionados con Roles
+
+- **Registro**: Todo nuevo usuario se registra inicialmente con el rol USER (habilitado).
+- **Inicio de Sesión**: Solo usuarios con rol USER pueden iniciar sesión.
+- **Recuperación de Contraseña**: 
+  - Usuarios habilitados: Pueden ver y restablecer su contraseña.
+  - Usuarios deshabilitados: Se les informa de su estado pero no se les muestra la contraseña (deben contactar al administrador).
+
+Este sistema de roles proporciona una base sólida para implementar políticas de seguridad y control de acceso, permitiendo una gestión efectiva de los usuarios según las necesidades del negocio.
+
 ### Observables y Servicios en Angular
 
 #### 1. Observables en Angular
