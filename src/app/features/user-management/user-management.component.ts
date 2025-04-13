@@ -2,49 +2,60 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../auth/services/auth.service';
-import { GroupService } from '../../auth/services/group.service';
 import { PermissionService } from '../../auth/services/permission.service';
-import { User, UserRole, ShapeUpGroup, Group, Permission } from '../../auth/models/user.model';
+import { User, UserRole, Permission, Role } from '../../auth/models/user.model';
 import { forkJoin, of } from 'rxjs';
 import { catchError, tap } from 'rxjs/operators';
+import { RoleService } from '../../auth/services/role.service';
+import { FindPipe } from '../../auth/pipes/find.pipe';
 
 @Component({
   selector: 'app-user-management',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, FindPipe],
   templateUrl: './user-management.component.html',
   styleUrls: ['./user-management.component.scss']
 })
 export class UserManagementComponent implements OnInit {
   UserRole = UserRole; // Para usar en el template
-  ShapeUpGroup = ShapeUpGroup; // Para usar en el template
   users: User[] = [];
-  groups: Group[] = [];
+  roles: Role[] = [];
   permissions: Permission[] = [];
   selectedRoles: { [key: string]: { [role: string]: boolean } } = {};
-  selectedGroups: { [key: string]: { [group: string]: boolean } } = {};
-  selectedGroupPermissions: { [groupId: string]: { [permissionId: string]: boolean } } = {};
+  selectedRolePermissions: { [roleId: string]: { [permissionId: string]: boolean } } = {};
   loading = true;
-  loadingGroups = true;
+  loadingRoles = true;
   loadingPermissions = true;
   message = '';
   error = '';
-  activeTab = 'roles'; // 'roles', 'groups', 'permissions', 'group-permissions'
+  activeTab = 'roles'; // 'roles', 'permissions', 'role-permissions'
+  
+  // Para usar en el template
+  console = console;
   
   // Formulario para crear nuevos permisos
   permissionForm: FormGroup;
   editingPermission: Permission | null = null;
   
   // Variables para controlar edición
-  selectedGroupForPermissions: ShapeUpGroup | null = null;
+  selectedRoleForPermissions: string | null = null;
+
+  // Formulario para crear nuevos roles
+  roleForm: FormGroup;
+  editingRole: Role | null = null;
 
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private groupService: GroupService,
+    private roleService: RoleService,
     private permissionService: PermissionService
   ) {
     this.permissionForm = this.fb.group({
+      name: ['', [Validators.required, Validators.minLength(3)]],
+      description: ['', Validators.required]
+    });
+    
+    this.roleForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
       description: ['', Validators.required]
     });
@@ -52,10 +63,13 @@ export class UserManagementComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadUsers();
-    this.loadGroups();
+    this.loadRoles();
     this.loadPermissions();
   }
 
+  /**
+   * Carga la lista de usuarios desde el servicio
+   */
   loadUsers(): void {
     this.loading = true;
     this.error = '';
@@ -64,17 +78,18 @@ export class UserManagementComponent implements OnInit {
       next: (users) => {
         this.users = users;
         
-        // Inicializar selección de roles con los roles actuales
+        // Inicializar selección de roles con los roles actuales reales
         this.users.forEach(user => {
           this.selectedRoles[user.id!] = {
-            [UserRole.ADMIN]: user.roles?.includes(UserRole.ADMIN) || false,
-            [UserRole.USER]: user.roles?.includes(UserRole.USER) || false
+            [UserRole.ADMINISTRADOR]: user.roles?.includes(UserRole.ADMINISTRADOR) || false,
+            [UserRole.INVITADO]: user.roles?.includes(UserRole.INVITADO) || false
           };
           
-          // Inicializar selección de grupos
-          this.selectedGroups[user.id!] = {};
-          Object.values(ShapeUpGroup).forEach(group => {
-            this.selectedGroups[user.id!][group] = user.groups?.includes(group) || false;
+          // Añadir roles personalizados
+          this.roles.forEach(role => {
+            if (!this.isPredefinedRoleById(role.id)) {
+              this.selectedRoles[user.id!][role.id] = user.roles?.includes(role.id) || false;
+            }
           });
         });
         
@@ -87,26 +102,34 @@ export class UserManagementComponent implements OnInit {
     });
   }
   
-  loadGroups(): void {
-    this.loadingGroups = true;
+  loadRoles(): void {
+    this.loadingRoles = true;
     
-    this.groupService.getAllGroups().subscribe({
-      next: (groups) => {
-        this.groups = groups;
+    this.roleService.getAllRoles().subscribe({
+      next: (roles) => {
+        this.roles = roles;
+        console.log('Roles cargados:', this.roles);
         
-        // Inicializar la selección de permisos para cada grupo
-        groups.forEach(group => {
-          this.selectedGroupPermissions[group.id] = {};
-          group.permissions.forEach(permission => {
-            this.selectedGroupPermissions[group.id][permission.id] = true;
-          });
+        // Inicializar la selección de permisos para cada rol
+        roles.forEach(role => {
+          this.selectedRolePermissions[role.id] = {};
+          if (role.permissions && role.permissions.length > 0) {
+            role.permissions.forEach(permission => {
+              this.selectedRolePermissions[role.id][permission.id] = true;
+            });
+            console.log(`Rol ${role.id} tiene ${role.permissions.length} permisos:`, 
+              role.permissions.map(p => p.id));
+          } else {
+            console.log(`Rol ${role.id} no tiene permisos asignados`);
+          }
         });
         
-        this.loadingGroups = false;
+        this.loadingRoles = false;
       },
       error: (err) => {
-        this.error = 'Error al cargar grupos: ' + err.message;
-        this.loadingGroups = false;
+        console.error('Error al cargar roles:', err);
+        this.error = 'Error al cargar roles: ' + err.message;
+        this.loadingRoles = false;
       }
     });
   }
@@ -131,55 +154,73 @@ export class UserManagementComponent implements OnInit {
   }
   
   isAdmin(user: User): boolean {
-    return user.roles?.includes(UserRole.ADMIN) || false;
+    return user.roles?.includes(UserRole.ADMINISTRADOR) || false;
   }
 
   isUserEnabled(user: User): boolean {
-    return user.roles?.includes(UserRole.USER) || false;
+    return user.roles?.includes(UserRole.INVITADO) || false;
   }
   
-  hasGroup(user: User, group: ShapeUpGroup): boolean {
-    return user.groups?.includes(group) || false;
-  }
-  
-  getGroupPermissions(group: Group): Permission[] {
-    return group.permissions || [];
+  getRolePermissions(role: Role): Permission[] {
+    return role.permissions || [];
   }
 
+  /**
+   * Maneja los cambios en los roles de un usuario
+   */
   onRoleChange(user: User): void {
     // No permitir actualizar al superadmin
     if (this.isSuperAdmin(user)) {
-      // Restaurar los valores del superadmin (siempre debe ser admin y user)
-      this.selectedRoles[user.id!][UserRole.ADMIN] = true;
-      this.selectedRoles[user.id!][UserRole.USER] = true;
+      // Restaurar los valores del superadmin (siempre debe ser administrador e invitado)
+      this.selectedRoles[user.id!][UserRole.ADMINISTRADOR] = true;
+      this.selectedRoles[user.id!][UserRole.INVITADO] = true;
       return;
     }
     
-    // Si el usuario es admin, asegurarse de que también sea USER
-    if (this.selectedRoles[user.id!][UserRole.ADMIN]) {
-      this.selectedRoles[user.id!][UserRole.USER] = true;
+    // Si el usuario es administrador, asegurarse de que también sea INVITADO
+    if (this.selectedRoles[user.id!][UserRole.ADMINISTRADOR]) {
+      this.selectedRoles[user.id!][UserRole.INVITADO] = true;
     }
 
     // Convertir objeto de checkboxes a array de roles
-    const newRoles: UserRole[] = [];
+    const newRoles: string[] = [];
     const userRoles = this.selectedRoles[user.id!];
     
-    if (userRoles[UserRole.ADMIN]) newRoles.push(UserRole.ADMIN);
-    if (userRoles[UserRole.USER]) newRoles.push(UserRole.USER);
+    // Añadir roles predefinidos
+    if (userRoles[UserRole.ADMINISTRADOR]) newRoles.push(UserRole.ADMINISTRADOR);
+    if (userRoles[UserRole.INVITADO]) newRoles.push(UserRole.INVITADO);
     
-    // Ya no obligamos a que tengan al menos un rol
-    // Un usuario sin rol USER está deshabilitado en el sistema
+    // Añadir roles personalizados
+    this.roles.forEach(role => {
+      if (!this.isPredefinedRoleById(role.id) && userRoles[role.id]) {
+        newRoles.push(role.id);
+      }
+    });
 
     this.authService.updateUserRoles(user.id!, newRoles).subscribe({
       next: (updatedUser) => {
         // Actualizar usuario en la lista
         const index = this.users.findIndex(u => u.id === updatedUser.id);
         if (index !== -1) {
+          // Reemplazar el usuario completo para garantizar la sincronización
           this.users[index] = updatedUser;
+          
+          // Actualizar también los checkboxes para reflejar el estado real
+          this.selectedRoles[updatedUser.id!] = {
+            [UserRole.ADMINISTRADOR]: updatedUser.roles?.includes(UserRole.ADMINISTRADOR) || false,
+            [UserRole.INVITADO]: updatedUser.roles?.includes(UserRole.INVITADO) || false
+          };
+          
+          // Actualizar roles personalizados
+          this.roles.forEach(role => {
+            if (!this.isPredefinedRoleById(role.id)) {
+              this.selectedRoles[updatedUser.id!][role.id] = updatedUser.roles?.includes(role.id) || false;
+            }
+          });
         }
         
         let statusMsg = "";
-        if (!updatedUser.roles?.includes(UserRole.USER)) {
+        if (!updatedUser.roles?.includes(UserRole.INVITADO)) {
           statusMsg = ` (Usuario deshabilitado)`;
         }
         
@@ -187,36 +228,9 @@ export class UserManagementComponent implements OnInit {
         setTimeout(() => this.message = '', 3000);
       },
       error: (err) => {
+        // En caso de error, restauramos la UI a su estado anterior
+        this.loadUsers(); // Recargar usuarios para restaurar el estado correcto
         this.error = 'Error al actualizar roles: ' + err.message;
-        setTimeout(() => this.error = '', 3000);
-      }
-    });
-  }
-  
-  onGroupChange(user: User): void {
-    // Convertir objeto de checkboxes a array de grupos
-    const newGroups: ShapeUpGroup[] = [];
-    const userGroups = this.selectedGroups[user.id!];
-    
-    Object.entries(userGroups).forEach(([group, isSelected]) => {
-      if (isSelected) {
-        newGroups.push(group as ShapeUpGroup);
-      }
-    });
-    
-    this.authService.updateUserGroups(user.id!, newGroups).subscribe({
-      next: (updatedUser) => {
-        // Actualizar usuario en la lista
-        const index = this.users.findIndex(u => u.id === updatedUser.id);
-        if (index !== -1) {
-          this.users[index] = updatedUser;
-        }
-        
-        this.message = `Grupos actualizados para ${updatedUser.username}`;
-        setTimeout(() => this.message = '', 3000);
-      },
-      error: (err) => {
-        this.error = 'Error al actualizar grupos: ' + err.message;
         setTimeout(() => this.error = '', 3000);
       }
     });
@@ -295,77 +309,258 @@ export class UserManagementComponent implements OnInit {
     this.editingPermission = null;
   }
   
-  // Métodos para asignar permisos a grupos
-  selectGroupForPermissions(group: Group): void {
-    this.selectedGroupForPermissions = group.id;
+  // Métodos para asignar permisos a roles
+  selectRoleForPermissions(role: Role): void {
+    this.selectedRoleForPermissions = role.id;
     
-    // Reiniciar las selecciones
-    this.permissions.forEach(permission => {
-      if (!this.selectedGroupPermissions[group.id]) {
-        this.selectedGroupPermissions[group.id] = {};
-      }
+    // Reiniciar el objeto de selección de permisos completamente
+    this.selectedRolePermissions[role.id] = {};
+    
+    // Para roles predefinidos, establecer los permisos por defecto
+    if (this.isPredefinedRole(role.id)) {
+      // Inicializar todos los permisos como falsos
+      this.permissions.forEach(permission => {
+        this.selectedRolePermissions[role.id][permission.id] = false;
+      });
       
-      // Marcar los permisos que el grupo ya tiene
-      this.selectedGroupPermissions[group.id][permission.id] = 
-        group.permissions.some(p => p.id === permission.id);
-    });
+      // Establecer solo el permiso por defecto
+      if (role.id === 'ADMINISTRADOR') {
+        this.selectedRolePermissions[role.id]['ADMINISTRACION_TOTAL'] = true;
+      } else if (role.id === 'INVITADO') {
+        this.selectedRolePermissions[role.id]['INVITADO'] = true;
+      }
+    } else {
+      // Para roles no predefinidos, inicializar primero todos como falsos
+      this.permissions.forEach(permission => {
+        this.selectedRolePermissions[role.id][permission.id] = false;
+      });
+      
+      // Luego marcar como verdaderos solo los que ya tiene asignados
+      if (role.permissions && role.permissions.length > 0) {
+        role.permissions.forEach(permission => {
+          this.selectedRolePermissions[role.id][permission.id] = true;
+        });
+      }
+    }
+    
+    console.log('Permisos inicializados para el rol:', role.id, this.selectedRolePermissions[role.id]);
   }
   
-  saveGroupPermissions(): void {
-    if (!this.selectedGroupForPermissions) {
+  /**
+   * Verifica si un rol es predefinido del sistema
+   */
+  isPredefinedRole(roleId: string): boolean {
+    return roleId === 'ADMINISTRADOR' || roleId === 'INVITADO';
+  }
+
+  /**
+   * Verifica si un permiso es el asignado por defecto a un rol predefinido
+   */
+  isDefaultPermissionForRole(roleId: string, permissionId: string): boolean {
+    if (roleId === 'ADMINISTRADOR' && permissionId === 'ADMINISTRACION_TOTAL') {
+      return true;
+    }
+    if (roleId === 'INVITADO' && permissionId === 'INVITADO') {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Guarda los cambios en los permisos del rol seleccionado
+   */
+  saveRolePermissions(): void {
+    if (!this.selectedRoleForPermissions) {
+      console.error('No hay un rol seleccionado para guardar permisos');
       return;
     }
     
-    // Convertir objeto de checkboxes a array de IDs de permisos
-    const permissionIds: string[] = [];
+    // Verificar si es un rol predefinido
+    const roleId = this.selectedRoleForPermissions;
     
-    Object.entries(this.selectedGroupPermissions[this.selectedGroupForPermissions]).forEach(([permissionId, isSelected]) => {
-      if (isSelected) {
-        permissionIds.push(permissionId);
+    if (this.isPredefinedRole(roleId)) {
+      // Para roles predefinidos, mantener solo su permiso por defecto
+      const permissionsToSave: string[] = [];
+      
+      if (roleId === 'ADMINISTRADOR') {
+        permissionsToSave.push('ADMINISTRACION_TOTAL');
+      } else if (roleId === 'INVITADO') {
+        permissionsToSave.push('INVITADO');
       }
-    });
+      
+      this.message = `Los permisos del rol ${roleId} no se pueden modificar por ser un rol predefinido.`;
+      setTimeout(() => this.message = '', 3000);
+      
+      // Restaurar los permisos originales
+      this.cancelEditRolePermissions();
+      return;
+    }
     
-    this.groupService.setGroupPermissions(this.selectedGroupForPermissions, permissionIds).subscribe({
-      next: (updatedGroup) => {
-        // Actualizar grupo en la lista
-        const index = this.groups.findIndex(g => g.id === updatedGroup.id);
+    // Para roles no predefinidos, continuar con el proceso normal
+    const permissionsToSave = Object.keys(this.selectedRolePermissions[roleId])
+      .filter(permId => this.selectedRolePermissions[roleId][permId] === true);
+    
+    console.log('Componente: Permisos a guardar para el rol', roleId, ':', permissionsToSave);
+    
+    if (permissionsToSave.length === 0) {
+      console.warn('⚠️ No hay permisos seleccionados para guardar');
+    }
+    
+    this.roleService.updateRolePermissions(roleId, permissionsToSave).subscribe({
+      next: (updatedRole) => {
+        console.log('Componente: Rol actualizado recibido del servidor:', updatedRole);
+        console.log('Componente: Permisos en el rol actualizado:', updatedRole.permissions.map(p => p.id));
+        
+        // Actualizar el rol en la lista local
+        const index = this.roles.findIndex(r => r.id === updatedRole.id);
         if (index !== -1) {
-          this.groups[index] = updatedGroup;
+          // Crear una copia profunda del rol actualizado
+          this.roles[index] = {
+            ...updatedRole,
+            permissions: [...updatedRole.permissions]
+          };
+          console.log('Componente: Rol actualizado en la lista con', updatedRole.permissions.length, 'permisos');
+        } else {
+          console.error('Componente: No se encontró el rol en la lista local');
         }
         
-        this.message = `Permisos actualizados para el grupo ${updatedGroup.name}`;
+        // Actualizar los permisos seleccionados para este rol
+        this.selectedRolePermissions[roleId] = {};
+        if (updatedRole.permissions && updatedRole.permissions.length > 0) {
+          updatedRole.permissions.forEach(permission => {
+            this.selectedRolePermissions[roleId][permission.id] = true;
+          });
+        }
+        
+        this.message = `Permisos actualizados para el rol ${updatedRole.name}`;
         setTimeout(() => this.message = '', 3000);
+        
+        // Volver a la lista de roles
+        this.selectedRoleForPermissions = null;
+        
+        // Recargar la lista de roles para asegurar que los datos estén sincronizados
+        this.loadRoles();
       },
       error: (err) => {
-        this.error = 'Error al actualizar permisos del grupo: ' + err.message;
+        console.error('Error al guardar permisos:', err);
+        this.error = 'Error al actualizar permisos: ' + err.message;
         setTimeout(() => this.error = '', 3000);
       }
     });
   }
   
-  cancelEditGroupPermissions(): void {
-    this.selectedGroupForPermissions = null;
+  cancelEditRolePermissions(): void {
+    this.selectedRoleForPermissions = null;
   }
   
   setActiveTab(tab: string): void {
     this.activeTab = tab;
   }
-  
-  // Helper para mostrar nombres de grupos legibles
-  getGroupDisplayName(group: ShapeUpGroup): string {
-    switch (group) {
-      case ShapeUpGroup.SHAPER: return 'Shaper';
-      case ShapeUpGroup.STAKEHOLDER: return 'Stakeholder';
-      case ShapeUpGroup.BUILDER: return 'Builder';
-      case ShapeUpGroup.DESIGNER: return 'Designer';
-      case ShapeUpGroup.QA: return 'Quality Assurance';
-      case ShapeUpGroup.TEAM_LEAD: return 'Team Lead';
-      case ShapeUpGroup.TECH_LEAD: return 'Tech Lead';
-      default: return group;
+
+  /**
+   * Verifica si un permiso es predefinido del sistema
+   */
+  isPredefinedPermission(permissionId: string): boolean {
+    return permissionId === 'ADMINISTRACION_TOTAL' || permissionId === 'INVITADO';
+  }
+
+  /**
+   * Verifica si un rol es predefinido por su id
+   */
+  isPredefinedRoleById(roleId: string): boolean {
+    return this.isPredefinedRole(roleId);
+  }
+
+  /**
+   * Enviar formulario de rol para crear o actualizar
+   */
+  onSubmitRole(): void {
+    if (this.roleForm.invalid) {
+      return;
+    }
+    
+    const roleData = this.roleForm.value;
+    
+    if (this.editingRole) {
+      // Editar rol existente
+      this.roleService.updateRole(this.editingRole.id, roleData).subscribe({
+        next: (updatedRole) => {
+          // Actualizar rol en la lista
+          if (updatedRole) {
+            const index = this.roles.findIndex(r => r.id === updatedRole.id);
+            if (index !== -1) {
+              this.roles[index] = updatedRole;
+            }
+            
+            this.message = `Rol '${updatedRole.name}' actualizado`;
+          } else {
+            this.message = 'Rol actualizado';
+          }
+          this.resetRoleForm();
+          setTimeout(() => this.message = '', 3000);
+        },
+        error: (err) => {
+          this.error = 'Error al actualizar rol: ' + err.message;
+          setTimeout(() => this.error = '', 3000);
+        }
+      });
+    } else {
+      // Crear nuevo rol
+      this.roleService.createRole(roleData).subscribe({
+        next: (newRole) => {
+          // No actualizar directamente la lista local
+          // En su lugar, recargar todos los roles del servicio
+          this.roleService.getAllRoles().subscribe(roles => {
+            this.roles = roles;
+            
+            this.message = `Rol '${newRole.name}' creado`;
+            this.resetRoleForm();
+            setTimeout(() => this.message = '', 3000);
+          });
+        },
+        error: (err) => {
+          this.error = 'Error al crear rol: ' + err.message;
+          setTimeout(() => this.error = '', 3000);
+        }
+      });
     }
   }
-  
-  getUserGroupsCount(user: User): number {
-    return user.groups?.length || 0;
+
+  /**
+   * Editar un rol existente
+   */
+  editRole(role: Role): void {
+    this.editingRole = role;
+    this.roleForm.patchValue({
+      name: role.name,
+      description: role.description
+    });
+  }
+
+  /**
+   * Eliminar un rol
+   */
+  deleteRole(roleId: string): void {
+    if (confirm('¿Estás seguro de eliminar este rol? Esta acción no se puede deshacer.')) {
+      this.roleService.deleteRole(roleId).subscribe({
+        next: () => {
+          this.roles = this.roles.filter(r => r.id !== roleId);
+          this.message = 'Rol eliminado correctamente';
+          setTimeout(() => this.message = '', 3000);
+        },
+        error: (err) => {
+          this.error = 'Error al eliminar rol: ' + err.message;
+          setTimeout(() => this.error = '', 3000);
+        }
+      });
+    }
+  }
+
+  /**
+   * Limpiar el formulario de rol
+   */
+  resetRoleForm(): void {
+    this.roleForm.reset();
+    this.editingRole = null;
   }
 } 

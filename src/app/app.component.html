@@ -10,7 +10,10 @@
         @if (!isAuthenticated) {
           <li><a routerLink="/auth/login" routerLinkActive="active">Iniciar Sesión</a></li>
           <li><a routerLink="/auth/register" routerLinkActive="active">Registrarse</a></li>
-        } @else {
+        } @else {          
+          <!-- Perfil de usuario -->
+          <li><a routerLink="/profile" routerLinkActive="active">Mi Perfil</a></li>
+          
           <li><a routerLink="/dashboard" routerLinkActive="active">Dashboard</a></li>
           
           <!-- Ocultar opciones que faltan implementar -->

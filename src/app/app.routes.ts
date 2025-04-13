@@ -1,9 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './auth/guards/auth.guard';
-import { roleGuard } from './auth/guards/role.guard';
-import { groupGuard } from './auth/guards/group.guard';
 import { permissionGuard } from './auth/guards/permission.guard';
-import { ShapeUpGroup, UserRole } from './auth/models/user.model';
 
 export const routes: Routes = [
   // Ruta pública por defecto
@@ -45,34 +42,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent)
       },
       {
-        path: 'user-management',
-        canActivate: [roleGuard([UserRole.ADMIN])],
-        loadComponent: () => import('./features/user-management/user-management.component').then(m => m.UserManagementComponent)
+        path: 'profile',
+        canActivate: [permissionGuard(['INVITADO'])],
+        loadComponent: () => import('./features/profile/profile.component').then(m => m.ProfileComponent)
       },
-      
-      // Nuevas rutas protegidas por grupos Shape Up
       {
-        path: 'shape-up',
-        children: [
-          {
-            path: 'shaper-panel',
-            canActivate: [groupGuard([ShapeUpGroup.SHAPER])],
-            loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-            data: { title: 'Panel del Shaper' }
-          },
-          {
-            path: 'team-management',
-            canActivate: [groupGuard([ShapeUpGroup.TEAM_LEAD, ShapeUpGroup.TECH_LEAD])],
-            loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-            data: { title: 'Gestión de Equipos' }
-          },
-          {
-            path: 'design-area',
-            canActivate: [permissionGuard(['DESIGNER'])],
-            loadComponent: () => import('./features/dashboard/dashboard.component').then(m => m.DashboardComponent),
-            data: { title: 'Área de Diseño' }
-          }
-        ]
+        path: 'user-management',
+        canActivate: [permissionGuard(['ADMINISTRACION_TOTAL'])],
+        loadComponent: () => import('./features/user-management/user-management.component').then(m => m.UserManagementComponent)
       }
     ]
   },

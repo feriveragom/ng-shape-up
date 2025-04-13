@@ -15,8 +15,30 @@ export class PermissionService {
   public permissions$ = this.permissionsSubject.asObservable();
   
   constructor() {
-    // Inicializar la lista vacía
-    this.permissionsSubject.next([]);
+    // Inicializar con los permisos predefinidos
+    this.initializeDefaultPermissions();
+  }
+  
+  /**
+   * Inicializa los permisos predefinidos del sistema
+   * Estos permisos son fijos y no se pueden eliminar
+   */
+  private initializeDefaultPermissions(): void {
+    this.permissions = [
+      {
+        id: 'ADMINISTRACION_TOTAL',
+        name: 'Administración Total',
+        description: 'Permite acceso completo a todas las funcionalidades'
+      },
+      {
+        id: 'INVITADO',
+        name: 'Acceso Invitado',
+        description: 'Permite acceso básico a la plataforma'
+      }
+    ];
+    
+    // Actualizar el subject
+    this.permissionsSubject.next([...this.permissions]);
   }
   
   /**
@@ -87,6 +109,11 @@ export class PermissionService {
       return throwError(() => new Error(`No se encontró el permiso con ID '${permissionId}'`));
     }
     
+    // Verificar si se está intentando editar un permiso predefinido
+    if (permissionId === 'ADMINISTRACION_TOTAL' || permissionId === 'INVITADO') {
+      return throwError(() => new Error(`No se pueden modificar los permisos predefinidos del sistema`));
+    }
+    
     // Si se está cambiando el nombre, verificar que no exista otro con ese nombre
     if (permission.name && permission.name.trim() !== '') {
       const nameToCheck = permission.name.toLowerCase();
@@ -122,6 +149,11 @@ export class PermissionService {
     
     if (index === -1) {
       return throwError(() => new Error(`No se encontró el permiso con ID '${permissionId}'`));
+    }
+    
+    // Verificar si se está intentando eliminar un permiso predefinido
+    if (permissionId === 'ADMINISTRACION_TOTAL' || permissionId === 'INVITADO') {
+      return throwError(() => new Error(`No se pueden eliminar los permisos predefinidos del sistema`));
     }
     
     // Eliminar el permiso

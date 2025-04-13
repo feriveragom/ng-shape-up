@@ -1,13 +1,13 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { GroupService } from '../services/group.service';
+import { RoleService } from '../services/role.service';
 import { map, catchError, of } from 'rxjs';
 
 export const permissionGuard = (requiredPermissions: string[]): CanActivateFn => {
   return (route, state) => {
     const authService = inject(AuthService);
-    const groupService = inject(GroupService);
+    const roleService = inject(RoleService);
     const router = inject(Router);
     
     // Obtener el usuario actual
@@ -19,11 +19,21 @@ export const permissionGuard = (requiredPermissions: string[]): CanActivateFn =>
       return false;
     }
     
+    // Si no tiene roles asignados, no tiene permisos
+    if (!currentUser?.roles || currentUser.roles.length === 0) {
+      router.navigate(['/dashboard'], { 
+        queryParams: { 
+          error: 'No tienes los permisos necesarios para acceder a esta sección.' 
+        }
+      });
+      return false;
+    }
+    
     // Verificar si tiene alguno de los permisos requeridos
-    return groupService.getUserPermissions(currentUser!).pipe(
+    return roleService.getUserPermissions(currentUser.roles).pipe(
       map(permissions => {
         const hasRequiredPermission = requiredPermissions.some(requiredPermission =>
-          permissions.some(p => p.name === requiredPermission)
+          permissions.some(p => p.id === requiredPermission)
         );
         
         if (hasRequiredPermission) {

@@ -1,16 +1,6 @@
 export enum UserRole {
-  ADMIN = 'ADMIN',
-  USER = 'USER'
-}
-
-export enum ShapeUpGroup {
-  SHAPER = 'SHAPER',
-  STAKEHOLDER = 'STAKEHOLDER',
-  BUILDER = 'BUILDER',
-  DESIGNER = 'DESIGNER',
-  QA = 'QA',
-  TEAM_LEAD = 'TEAM_LEAD',
-  TECH_LEAD = 'TECH_LEAD'
+  ADMINISTRADOR = 'ADMINISTRADOR',
+  INVITADO = 'INVITADO'
 }
 
 export interface Permission {
@@ -19,8 +9,8 @@ export interface Permission {
   description?: string;
 }
 
-export interface Group {
-  id: ShapeUpGroup;
+export interface Role {
+  id: string;
   name: string;
   description?: string;
   permissions: Permission[];
@@ -31,8 +21,7 @@ export interface User {
   username: string;
   password?: string;
   token?: string;
-  roles?: UserRole[];
-  groups?: ShapeUpGroup[];
+  roles?: string[]; // IDs de roles asignados al usuario
 }
 
 export interface LoginRequest {

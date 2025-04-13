@@ -9,25 +9,25 @@
     {{ error }}
   </div>
   
-  <div class="loading-indicator" *ngIf="loading && loadingGroups && loadingPermissions">
+  <div class="loading-indicator" *ngIf="loading && loadingRoles && loadingPermissions">
     Cargando datos...
   </div>
   
   <!-- Tabs de navegación -->
-  <div class="management-tabs" *ngIf="!(loading && loadingGroups && loadingPermissions)">
+  <div class="management-tabs" *ngIf="!(loading && loadingRoles && loadingPermissions)">
     <div 
       class="tab" 
       [class.active-tab]="activeTab === 'roles'"
       (click)="setActiveTab('roles')"
     >
-      Roles
+      Usuarios y Roles
     </div>
     <div 
       class="tab" 
-      [class.active-tab]="activeTab === 'groups'"
-      (click)="setActiveTab('groups')"
+      [class.active-tab]="activeTab === 'manage-roles'"
+      (click)="setActiveTab('manage-roles')"
     >
-      Grupos
+      Roles
     </div>
     <div 
       class="tab" 
@@ -38,21 +38,21 @@
     </div>
     <div 
       class="tab" 
-      [class.active-tab]="activeTab === 'group-permissions'"
-      (click)="setActiveTab('group-permissions')"
+      [class.active-tab]="activeTab === 'role-permissions'"
+      (click)="setActiveTab('role-permissions')"
     >
       Asignar Permisos
     </div>
   </div>
   
-  <!-- Tab de Roles (Vista original) -->
+  <!-- Tab de Roles (Vista principal) -->
   <div *ngIf="activeTab === 'roles' && !loading && users.length > 0">
     <table class="users-table">
       <thead>
         <tr>
           <th>Username</th>
           <th>Estado</th>
-          <th>Roles</th>
+          <th>Roles Asignados</th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -69,39 +69,57 @@
               <span 
                 *ngFor="let role of user.roles" 
                 class="role-badge"
-                [class.admin-role]="role === 'ADMIN'"
-                [class.user-role]="role === 'USER'"
+                [class.admin-role]="role === 'ADMINISTRADOR'"
+                [class.user-role]="role === 'INVITADO'"
+                [class.custom-role]="role !== 'ADMINISTRADOR' && role !== 'INVITADO'"
               >
                 {{ role }}
+              </span>
+              <span *ngIf="!user.roles || user.roles.length === 0" class="no-roles">
+                Sin roles asignados
               </span>
             </div>
           </td>
           <td>
             <div class="role-actions">
-              <div class="role-checkboxes">
+              <div class="actions">
                 <div class="checkbox-group">
                   <label>
                     <input 
                       type="checkbox" 
-                      [(ngModel)]="selectedRoles[user.id!][UserRole.ADMIN]"
+                      [(ngModel)]="selectedRoles[user.id!][UserRole.ADMINISTRADOR]" 
                       [disabled]="isSuperAdmin(user)"
-                      [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
+                      [checked]="user.roles?.includes(UserRole.ADMINISTRADOR)"
                       (change)="onRoleChange(user)"
                     />
-                    Administrador
+                    ADMINISTRADOR
                   </label>
                 </div>
                 <div class="checkbox-group">
                   <label>
                     <input 
-                      type="checkbox"
-                      [(ngModel)]="selectedRoles[user.id!][UserRole.USER]"
-                      [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMIN]"
-                      [checked]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.USER]"
+                      type="checkbox" 
+                      [(ngModel)]="selectedRoles[user.id!][UserRole.INVITADO]" 
+                      [disabled]="isSuperAdmin(user) || selectedRoles[user.id!][UserRole.ADMINISTRADOR]"
+                      [checked]="user.roles?.includes(UserRole.INVITADO)"
                       (change)="onRoleChange(user)"
                     />
-                    Usuario (Habilitado)
+                    INVITADO
                   </label>
+                </div>
+                <!-- Roles personalizados -->
+                <div *ngFor="let role of roles" class="checkbox-group">
+                  <ng-container *ngIf="!isPredefinedRoleById(role.id) && !isSuperAdmin(user)">
+                    <label>
+                      <input 
+                        type="checkbox"
+                        [(ngModel)]="selectedRoles[user.id!][role.id]"
+                        [checked]="user.roles?.includes(role.id)"
+                        (change)="onRoleChange(user)"
+                      />
+                      {{ role.name | uppercase }}
+                    </label>
+                  </ng-container>
                 </div>
               </div>
             </div>
@@ -109,87 +127,6 @@
         </tr>
       </tbody>
     </table>
-  </div>
-  
-  <!-- Tab de Grupos Shape Up -->
-  <div *ngIf="activeTab === 'groups' && !loading && users.length > 0">
-    <table class="users-table">
-      <thead>
-        <tr>
-          <th>Username</th>
-          <th>Estado</th>
-          <th>Grupos</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let user of users" [class.disabled-user]="!isUserEnabled(user)">
-          <td>{{ user.username }}</td>
-          <td>
-            <span class="user-status" [class.status-enabled]="isUserEnabled(user)" [class.status-disabled]="!isUserEnabled(user)">
-              {{ isUserEnabled(user) ? 'Habilitado' : 'Deshabilitado' }}
-            </span>
-          </td>
-          <td>
-            <div class="group-badges">
-              <span 
-                *ngFor="let group of user.groups" 
-                class="group-badge"
-              >
-                {{ getGroupDisplayName(group) }}
-              </span>
-              <span *ngIf="!user.groups || user.groups.length === 0" class="no-groups">
-                Sin grupos asignados
-              </span>
-            </div>
-          </td>
-          <td>
-            <div class="group-actions">
-              <div class="group-checkboxes">
-                <div *ngFor="let groupType of ShapeUpGroup | keyvalue" class="checkbox-group">
-                  <label>
-                    <input 
-                      type="checkbox"
-                      [(ngModel)]="selectedGroups[user.id!][groupType.value]"
-                      [disabled]="!isUserEnabled(user)"
-                      (change)="onGroupChange(user)"
-                    />
-                    {{ getGroupDisplayName(groupType.value) }}
-                  </label>
-                </div>
-              </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    
-    <!-- Lista de Permisos por Grupo -->
-    <div class="permissions-section" *ngIf="!loadingGroups && groups.length > 0">
-      <h2>Permisos por Grupo</h2>
-      <div class="permissions-list">
-        <div *ngFor="let group of groups" class="permission-card">
-          <h3>{{ getGroupDisplayName(group.id) }}</h3>
-          <div *ngIf="group.description" class="group-description">
-            {{ group.description }}
-          </div>
-          <div class="permissions">
-            <div *ngIf="group.permissions.length === 0" class="no-permissions-message">
-              Este grupo no tiene permisos asignados.
-            </div>
-            <div class="permission-badges" *ngIf="group.permissions.length > 0">
-              <div *ngFor="let permission of group.permissions" class="permission-badge">
-                <span class="permission-badge-name">{{ permission.name }}</span>
-                <span class="permission-badge-id">{{ permission.id }}</span>
-                <div *ngIf="permission.description" class="permission-badge-description">
-                  {{ permission.description }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
   
   <!-- Tab de Gestión de Permisos -->
@@ -264,24 +201,29 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let permission of permissions">
+            <tr *ngFor="let permission of permissions" [class.predefined-permission]="isPredefinedPermission(permission.id)">
               <td>{{ permission.id }}</td>
               <td>{{ permission.name }}</td>
               <td>{{ permission.description }}</td>
               <td>
                 <div class="permission-actions">
-                  <button 
-                    class="edit-button"
-                    (click)="editPermission(permission)"
-                  >
-                    Editar
-                  </button>
-                  <button 
-                    class="delete-button"
-                    (click)="deletePermission(permission.id)"
-                  >
-                    Eliminar
-                  </button>
+                  <span *ngIf="isPredefinedPermission(permission.id)" class="predefined-badge">
+                    Predefinido
+                  </span>
+                  <ng-container *ngIf="!isPredefinedPermission(permission.id)">
+                    <button 
+                      class="edit-button"
+                      (click)="editPermission(permission)"
+                    >
+                      Editar
+                    </button>
+                    <button 
+                      class="delete-button"
+                      (click)="deletePermission(permission.id)"
+                    >
+                      Eliminar
+                    </button>
+                  </ng-container>
                 </div>
               </td>
             </tr>
@@ -291,31 +233,39 @@
     </div>
   </div>
   
-  <!-- Tab de Asignación de Permisos a Grupos -->
-  <div *ngIf="activeTab === 'group-permissions' && !loadingGroups && !loadingPermissions">
-    <div class="group-permissions-container">
-      <div *ngIf="!selectedGroupForPermissions" class="group-selection-section">
-        <h2>Selecciona un Grupo para Gestionar sus Permisos</h2>
+  <!-- Tab de Asignación de Permisos a Roles -->
+  <div *ngIf="activeTab === 'role-permissions' && !loadingRoles && !loadingPermissions">
+    <div class="role-permissions-container">
+      <div *ngIf="!selectedRoleForPermissions" class="role-selection-section">
+        <h2>Selecciona un Rol para Gestionar sus Permisos</h2>
         
-        <div class="groups-grid">
+        <div class="roles-grid">
           <div 
-            *ngFor="let group of groups" 
-            class="group-card"
-            (click)="selectGroupForPermissions(group)"
+            *ngFor="let role of roles" 
+            class="role-card"
+            [attr.data-role]="role.id"
+            (click)="selectRoleForPermissions(role)"
           >
-            <h3>{{ getGroupDisplayName(group.id) }}</h3>
-            <p class="group-description">{{ group.description }}</p>
-            <div class="group-permissions-count">
-              {{ group.permissions.length }} permisos asignados
+            <h3>{{ role.name }}</h3>
+            <p class="role-description">{{ role.description }}</p>
+            <div class="role-permissions-count" [style.fontWeight]="role.permissions.length ? 'bold' : 'normal'">
+              <span *ngIf="role.permissions.length === 0">Sin permisos asignados</span>
+              <span *ngIf="role.permissions.length === 1">1 permiso asignado</span>
+              <span *ngIf="role.permissions.length > 1">{{ role.permissions.length }} permisos asignados</span>
+            </div>
+            <div *ngIf="role.permissions.length > 0" class="role-permissions-list">
+              <span *ngFor="let permission of role.permissions" class="permission-pill">
+                {{ permission.name }}
+              </span>
             </div>
           </div>
         </div>
       </div>
       
-      <div *ngIf="selectedGroupForPermissions" class="group-permission-edit-section">
+      <div *ngIf="selectedRoleForPermissions" class="role-permission-edit-section">
         <div class="edit-header">
-          <h2>Gestionar Permisos del Grupo: {{ getGroupDisplayName(selectedGroupForPermissions) }}</h2>
-          <button class="back-button" (click)="cancelEditGroupPermissions()">Volver a la lista de grupos</button>
+          <h2>Gestionar Permisos del Rol: {{ (roles | find: selectedRoleForPermissions)?.name }}</h2>
+          <button class="back-button" (click)="cancelEditRolePermissions()">Volver a la lista de roles</button>
         </div>
         
         <div *ngIf="permissions.length === 0" class="no-permissions-message">
@@ -323,17 +273,30 @@
         </div>
         
         <div *ngIf="permissions.length > 0" class="permissions-selection">
+          <div *ngIf="isPredefinedRole(selectedRoleForPermissions)" class="predefined-role-notice">
+            <div class="predefined-badge">Rol Predefinido</div>
+            <p>Este rol tiene permisos definidos por el sistema que no pueden ser modificados.</p>
+          </div>
+          
           <div class="permissions-checkboxes">
-            <div *ngFor="let permission of permissions" class="permission-checkbox-group">
+            <div *ngFor="let permission of permissions" class="permission-checkbox-group"
+                 [class.default-permission]="isDefaultPermissionForRole(selectedRoleForPermissions, permission.id)"
+                 [class.disabled-permission]="isPredefinedRole(selectedRoleForPermissions) && !isDefaultPermissionForRole(selectedRoleForPermissions, permission.id)">
               <label>
                 <input 
                   type="checkbox"
-                  [(ngModel)]="selectedGroupPermissions[selectedGroupForPermissions][permission.id]"
+                  [(ngModel)]="selectedRolePermissions[selectedRoleForPermissions][permission.id]"
+                  [disabled]="isPredefinedRole(selectedRoleForPermissions) || 
+                            (isPredefinedRole(selectedRoleForPermissions) && !isDefaultPermissionForRole(selectedRoleForPermissions, permission.id))"
+                  (change)="console.log(permission.id, selectedRolePermissions[selectedRoleForPermissions][permission.id])"
                 />
                 <div class="permission-details">
                   <span class="permission-name">{{ permission.name }}</span>
                   <span class="permission-id">({{ permission.id }})</span>
                   <p class="permission-description">{{ permission.description }}</p>
+                  <span *ngIf="isDefaultPermissionForRole(selectedRoleForPermissions, permission.id)" class="default-badge">
+                    Permiso por defecto - No modificable
+                  </span>
                 </div>
               </label>
             </div>
@@ -342,13 +305,13 @@
           <div class="permission-edit-actions">
             <button 
               class="primary-button"
-              (click)="saveGroupPermissions()"
+              (click)="saveRolePermissions()"
             >
               Guardar Permisos
             </button>
             <button 
               class="secondary-button"
-              (click)="cancelEditGroupPermissions()"
+              (click)="cancelEditRolePermissions()"
             >
               Cancelar
             </button>
@@ -358,7 +321,111 @@
     </div>
   </div>
   
-  <div class="no-users-message" *ngIf="!loading && users.length === 0 && (activeTab === 'roles' || activeTab === 'groups')">
+  <!-- Tab de Gestión de Roles -->
+  <div *ngIf="activeTab === 'manage-roles' && !loadingRoles">
+    <div class="permissions-container">
+      <div class="permissions-form-section">
+        <h2>{{ editingRole ? 'Editar Rol' : 'Crear Nuevo Rol' }}</h2>
+        
+        <form [formGroup]="roleForm" (ngSubmit)="onSubmitRole()" class="permission-form">
+          <div class="form-field">
+            <label for="roleName">Nombre del Rol:</label>
+            <input 
+              type="text" 
+              id="roleName" 
+              formControlName="name" 
+              placeholder="Ej: Editor"
+            >
+            <div *ngIf="roleForm.get('name')?.invalid && roleForm.get('name')?.touched" class="form-error">
+              <span *ngIf="roleForm.get('name')?.errors?.['required']">El nombre es obligatorio</span>
+              <span *ngIf="roleForm.get('name')?.errors?.['minlength']">El nombre debe tener al menos 3 caracteres</span>
+            </div>
+          </div>
+          
+          <div class="form-field">
+            <label for="roleDescription">Descripción:</label>
+            <textarea 
+              id="roleDescription" 
+              formControlName="description" 
+              placeholder="Ej: Puede editar contenido pero no administrar usuarios"
+              rows="3"
+            ></textarea>
+            <div *ngIf="roleForm.get('description')?.invalid && roleForm.get('description')?.touched" class="form-error">
+              La descripción es obligatoria
+            </div>
+          </div>
+          
+          <div class="form-actions">
+            <button 
+              type="submit" 
+              [disabled]="roleForm.invalid"
+              class="primary-button"
+            >
+              {{ editingRole ? 'Actualizar Rol' : 'Crear Rol' }}
+            </button>
+            
+            <button 
+              *ngIf="editingRole"
+              type="button" 
+              class="secondary-button"
+              (click)="resetRoleForm()"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="permissions-list-section">
+        <h2>Roles Disponibles</h2>
+        
+        <div *ngIf="roles.length === 0" class="no-permissions-message">
+          No hay roles definidos. Crea el primero usando el formulario.
+        </div>
+        
+        <table *ngIf="roles.length > 0" class="permissions-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let role of roles" [class.predefined-permission]="isPredefinedRoleById(role.id)">
+              <td>{{ role.id }}</td>
+              <td>{{ role.name }}</td>
+              <td>{{ role.description }}</td>
+              <td>
+                <div class="permission-actions">
+                  <span *ngIf="isPredefinedRoleById(role.id)" class="predefined-badge">
+                    Predefinido
+                  </span>
+                  <ng-container *ngIf="!isPredefinedRoleById(role.id)">
+                    <button 
+                      class="edit-button"
+                      (click)="editRole(role)"
+                    >
+                      Editar
+                    </button>
+                    <button 
+                      class="delete-button"
+                      (click)="deleteRole(role.id)"
+                    >
+                      Eliminar
+                    </button>
+                  </ng-container>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div class="no-users-message" *ngIf="!loading && users.length === 0 && activeTab === 'roles'">
     No hay usuarios registrados.
   </div>
 </div> 

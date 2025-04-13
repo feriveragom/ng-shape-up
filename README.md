@@ -1431,4 +1431,12 @@ Después de `firebase init`, modificar las reglas generadas:
     .github\workflows\firebase-hosting-merge.yml
     .github\workflows\firebase-hosting-pull-request.yml
 
-
+# La configuración base (hardcoded) del sistema es:
+## Usuario superadmin: Usuario predefinido que siempre existe
+## Permisos base:
+  INVITADO - Permiso básico de acceso
+  ADMINISTRACION_TOTAL - Permiso administrativo completo
+## Roles base:
+  ADMINISTRADOR - Tiene asignado el permiso ADMINISTRACION_TOTAL
+  INVITADO - Tiene asignado el permiso INVITADO
+  Estos elementos son la base fundamental del sistema y no se pueden eliminar ni modificar. Todo lo demás (usuarios adicionales, permisos personalizados, etc.) se gestiona dinámicamente a través de la interfaz de administración.

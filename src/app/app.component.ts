@@ -27,7 +27,7 @@ export class AppComponent implements OnInit {
     this.authService.currentUser$.subscribe(user => {
       this.isAuthenticated = !!user;
       // Verificar si el usuario tiene rol admin
-      this.isAdmin = this.authService.currentUserHasRole(UserRole.ADMIN);
+      this.isAdmin = this.authService.currentUserHasRole(UserRole.ADMINISTRADOR);
       console.log('Usuario autenticado:', user);
       console.log('Es admin:', this.isAdmin);
     });
